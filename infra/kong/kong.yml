@@ -1,0 +1,58 @@
+# Kong DB-less declarative config (dev). JWT/rate-limit: see BACKEND_TASKS 11.x.
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: inventory-api
+    url: http://inventory-api:8080
+    routes:
+      - name: inventory-api-routes
+        paths:
+          - /api/v1/inventory
+        strip_path: false
+
+  - name: notification-service
+    url: http://notification-service:8081
+    routes:
+      - name: notification-service-routes
+        paths:
+          - /api/v1/notifications
+        strip_path: false
+
+  - name: authentication-service
+    url: http://authentication-service:8082
+    routes:
+      - name: authentication-service-routes
+        paths:
+          - /api/v1/auth
+        strip_path: false
+
+  - name: common-service
+    url: http://common-service:8083
+    routes:
+      - name: common-service-routes
+        paths:
+          - /api/v1/common
+        strip_path: false
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Authorization
+        - Content-Type
+        - X-Request-Id
+      exposed_headers:
+        - X-Request-Id
+      credentials: true
+      max_age: 3600

@@ -1,0 +1,16 @@
+.git
+.gitignore
+**/.env
+**/.env.*
+!.env.example
+bin/
+dist/
+coverage.out
+*.test
+*.out
+*.exe
+.idea/
+.vscode/
+terminals/
+# pre-commit / lint caches
+.cache/

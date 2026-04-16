@@ -10,7 +10,7 @@ import (
 func main() {
 	cfg := viper.New()
 	cfg.AutomaticEnv()
-	cfg.SetDefault("APP_PORT", "8080")
+	cfg.SetDefault("APP_PORT", "8083")
 	port := cfg.GetString("APP_PORT")
 
 	e := echo.New()
@@ -20,8 +20,8 @@ func main() {
 		return c.String(http.StatusOK, "ok")
 	})
 
-	inv := e.Group("/api/v1/inventory")
-	inv.GET("/health", func(c echo.Context) error {
+	common := e.Group("/api/v1/common")
+	common.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "ok")
 	})
 
