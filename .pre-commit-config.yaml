@@ -1,0 +1,17 @@
+# Install: pip install pre-commit && make hooks-install
+# Run all: make hooks-run
+# Needs Go on PATH (golangci-lint invokes `go`). On Windows: set PATH to include "C:\Program Files\Go\bin".
+default_install_hook_types: [pre-commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.11.4
+    hooks:
+      # Full-module run (unused/staticcheck need whole module); upstream entry includes --fix.
+      - id: golangci-lint-full
+        args: [--config=.golangci.yml]
