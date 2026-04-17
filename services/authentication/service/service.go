@@ -17,8 +17,22 @@ type RegisterResult struct {
 	Email    string
 }
 
+// LoginInput is credential payload for authentication.
+type LoginInput struct {
+	Email    string
+	Password string
+}
+
+// LoginResult is authentication success payload.
+type LoginResult struct {
+	AccessToken string
+	TokenType   string
+	ExpiresIn   int64
+}
+
 // Service is the authentication application facade.
 type Service interface {
 	PingDB(ctx context.Context) error
 	RegisterTenantAdmin(ctx context.Context, in RegisterInput) (RegisterResult, error)
+	Login(ctx context.Context, in LoginInput) (LoginResult, error)
 }

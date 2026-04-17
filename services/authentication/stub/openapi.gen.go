@@ -4,6 +4,13 @@
 package stub
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+	strictecho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -11,6 +18,22 @@ import (
 type ErrorResponse struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	Email    openapi_types.Email `json:"email"`
+	Password string              `json:"password"`
+}
+
+// LoginResponse defines model for LoginResponse.
+type LoginResponse struct {
+	// AccessToken JWT access token
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn Access token expiration in seconds
+	ExpiresIn int64  `json:"expires_in"`
+	TokenType string `json:"token_type"`
 }
 
 // PlainTextOk Plain-text OK marker for probes
@@ -31,5 +54,420 @@ type RegisterResponse struct {
 	UserId   openapi_types.UUID  `json:"user_id"`
 }
 
+// PostApiV1AuthLoginJSONRequestBody defines body for PostApiV1AuthLogin for application/json ContentType.
+type PostApiV1AuthLoginJSONRequestBody = LoginRequest
+
 // PostApiV1AuthRegisterJSONRequestBody defines body for PostApiV1AuthRegister for application/json ContentType.
 type PostApiV1AuthRegisterJSONRequestBody = RegisterRequest
+
+// ServerInterface represents all server handlers.
+type ServerInterface interface {
+	// Authentication API health
+	// (GET /api/v1/auth/health)
+	GetApiV1AuthHealth(ctx echo.Context) error
+	// Login with email and password
+	// (POST /api/v1/auth/login)
+	PostApiV1AuthLogin(ctx echo.Context) error
+	// Register tenant and first admin
+	// (POST /api/v1/auth/register)
+	PostApiV1AuthRegister(ctx echo.Context) error
+	// Liveness probe
+	// (GET /health)
+	GetHealth(ctx echo.Context) error
+	// Readiness probe
+	// (GET /ready)
+	GetReady(ctx echo.Context) error
+}
+
+// ServerInterfaceWrapper converts echo contexts to parameters.
+type ServerInterfaceWrapper struct {
+	Handler ServerInterface
+}
+
+// GetApiV1AuthHealth converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1AuthHealth(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1AuthHealth(ctx)
+	return err
+}
+
+// PostApiV1AuthLogin converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1AuthLogin(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1AuthLogin(ctx)
+	return err
+}
+
+// PostApiV1AuthRegister converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1AuthRegister(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1AuthRegister(ctx)
+	return err
+}
+
+// GetHealth converts echo context to params.
+func (w *ServerInterfaceWrapper) GetHealth(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetHealth(ctx)
+	return err
+}
+
+// GetReady converts echo context to params.
+func (w *ServerInterfaceWrapper) GetReady(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetReady(ctx)
+	return err
+}
+
+// This is a simple interface which specifies echo.Route addition functions which
+// are present on both echo.Echo and echo.Group, since we want to allow using
+// either of them for path registration
+type EchoRouter interface {
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+}
+
+// RegisterHandlers adds each server route to the EchoRouter.
+func RegisterHandlers(router EchoRouter, si ServerInterface) {
+	RegisterHandlersWithBaseURL(router, si, "")
+}
+
+// Registers handlers, and prepends BaseURL to the paths, so that the paths
+// can be served under a prefix.
+func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string) {
+
+	wrapper := ServerInterfaceWrapper{
+		Handler: si,
+	}
+
+	router.GET(baseURL+"/api/v1/auth/health", wrapper.GetApiV1AuthHealth)
+	router.POST(baseURL+"/api/v1/auth/login", wrapper.PostApiV1AuthLogin)
+	router.POST(baseURL+"/api/v1/auth/register", wrapper.PostApiV1AuthRegister)
+	router.GET(baseURL+"/health", wrapper.GetHealth)
+	router.GET(baseURL+"/ready", wrapper.GetReady)
+
+}
+
+type GetApiV1AuthHealthRequestObject struct {
+}
+
+type GetApiV1AuthHealthResponseObject interface {
+	VisitGetApiV1AuthHealthResponse(w http.ResponseWriter) error
+}
+
+type GetApiV1AuthHealth200TextResponse PlainTextOk
+
+func (response GetApiV1AuthHealth200TextResponse) VisitGetApiV1AuthHealthResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(200)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type PostApiV1AuthLoginRequestObject struct {
+	Body *PostApiV1AuthLoginJSONRequestBody
+}
+
+type PostApiV1AuthLoginResponseObject interface {
+	VisitPostApiV1AuthLoginResponse(w http.ResponseWriter) error
+}
+
+type PostApiV1AuthLogin200JSONResponse LoginResponse
+
+func (response PostApiV1AuthLogin200JSONResponse) VisitPostApiV1AuthLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthLogin400JSONResponse ErrorResponse
+
+func (response PostApiV1AuthLogin400JSONResponse) VisitPostApiV1AuthLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthLogin401JSONResponse ErrorResponse
+
+func (response PostApiV1AuthLogin401JSONResponse) VisitPostApiV1AuthLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthLogin500JSONResponse ErrorResponse
+
+func (response PostApiV1AuthLogin500JSONResponse) VisitPostApiV1AuthLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthRegisterRequestObject struct {
+	Body *PostApiV1AuthRegisterJSONRequestBody
+}
+
+type PostApiV1AuthRegisterResponseObject interface {
+	VisitPostApiV1AuthRegisterResponse(w http.ResponseWriter) error
+}
+
+type PostApiV1AuthRegister201JSONResponse RegisterResponse
+
+func (response PostApiV1AuthRegister201JSONResponse) VisitPostApiV1AuthRegisterResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthRegister400JSONResponse ErrorResponse
+
+func (response PostApiV1AuthRegister400JSONResponse) VisitPostApiV1AuthRegisterResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthRegister409JSONResponse ErrorResponse
+
+func (response PostApiV1AuthRegister409JSONResponse) VisitPostApiV1AuthRegisterResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthRegister500JSONResponse ErrorResponse
+
+func (response PostApiV1AuthRegister500JSONResponse) VisitPostApiV1AuthRegisterResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetHealthRequestObject struct {
+}
+
+type GetHealthResponseObject interface {
+	VisitGetHealthResponse(w http.ResponseWriter) error
+}
+
+type GetHealth200TextResponse PlainTextOk
+
+func (response GetHealth200TextResponse) VisitGetHealthResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(200)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type GetReadyRequestObject struct {
+}
+
+type GetReadyResponseObject interface {
+	VisitGetReadyResponse(w http.ResponseWriter) error
+}
+
+type GetReady200TextResponse PlainTextOk
+
+func (response GetReady200TextResponse) VisitGetReadyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(200)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type GetReady503TextResponse string
+
+func (response GetReady503TextResponse) VisitGetReadyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(503)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+// StrictServerInterface represents all server handlers.
+type StrictServerInterface interface {
+	// Authentication API health
+	// (GET /api/v1/auth/health)
+	GetApiV1AuthHealth(ctx context.Context, request GetApiV1AuthHealthRequestObject) (GetApiV1AuthHealthResponseObject, error)
+	// Login with email and password
+	// (POST /api/v1/auth/login)
+	PostApiV1AuthLogin(ctx context.Context, request PostApiV1AuthLoginRequestObject) (PostApiV1AuthLoginResponseObject, error)
+	// Register tenant and first admin
+	// (POST /api/v1/auth/register)
+	PostApiV1AuthRegister(ctx context.Context, request PostApiV1AuthRegisterRequestObject) (PostApiV1AuthRegisterResponseObject, error)
+	// Liveness probe
+	// (GET /health)
+	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
+	// Readiness probe
+	// (GET /ready)
+	GetReady(ctx context.Context, request GetReadyRequestObject) (GetReadyResponseObject, error)
+}
+
+type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
+type StrictMiddlewareFunc = strictecho.StrictEchoMiddlewareFunc
+
+func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
+	return &strictHandler{ssi: ssi, middlewares: middlewares}
+}
+
+type strictHandler struct {
+	ssi         StrictServerInterface
+	middlewares []StrictMiddlewareFunc
+}
+
+// GetApiV1AuthHealth operation middleware
+func (sh *strictHandler) GetApiV1AuthHealth(ctx echo.Context) error {
+	var request GetApiV1AuthHealthRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetApiV1AuthHealth(ctx.Request().Context(), request.(GetApiV1AuthHealthRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetApiV1AuthHealth")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetApiV1AuthHealthResponseObject); ok {
+		return validResponse.VisitGetApiV1AuthHealthResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostApiV1AuthLogin operation middleware
+func (sh *strictHandler) PostApiV1AuthLogin(ctx echo.Context) error {
+	var request PostApiV1AuthLoginRequestObject
+
+	var body PostApiV1AuthLoginJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostApiV1AuthLogin(ctx.Request().Context(), request.(PostApiV1AuthLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostApiV1AuthLogin")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostApiV1AuthLoginResponseObject); ok {
+		return validResponse.VisitPostApiV1AuthLoginResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostApiV1AuthRegister operation middleware
+func (sh *strictHandler) PostApiV1AuthRegister(ctx echo.Context) error {
+	var request PostApiV1AuthRegisterRequestObject
+
+	var body PostApiV1AuthRegisterJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostApiV1AuthRegister(ctx.Request().Context(), request.(PostApiV1AuthRegisterRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostApiV1AuthRegister")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostApiV1AuthRegisterResponseObject); ok {
+		return validResponse.VisitPostApiV1AuthRegisterResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetHealth operation middleware
+func (sh *strictHandler) GetHealth(ctx echo.Context) error {
+	var request GetHealthRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetHealth(ctx.Request().Context(), request.(GetHealthRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetHealth")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
+		return validResponse.VisitGetHealthResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetReady operation middleware
+func (sh *strictHandler) GetReady(ctx echo.Context) error {
+	var request GetReadyRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetReady(ctx.Request().Context(), request.(GetReadyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetReady")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetReadyResponseObject); ok {
+		return validResponse.VisitGetReadyResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}

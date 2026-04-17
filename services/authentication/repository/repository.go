@@ -14,6 +14,7 @@ import (
 type Repository interface {
 	PingDB(ctx context.Context) error
 	CreateTenantAdmin(ctx context.Context, in schemas.CreateTenantAdminInput) (schemas.CreateTenantAdminResult, error)
+	FindUserCredentialByEmail(ctx context.Context, email string) (schemas.AuthUserCredential, error)
 }
 
 type repository struct {
@@ -64,4 +65,19 @@ func (r *repository) CreateTenantAdmin(ctx context.Context, in schemas.CreateTen
 		UserID:   userID,
 		Email:    strings.TrimSpace(strings.ToLower(in.AdminEmail)),
 	}, nil
+}
+
+func (r *repository) FindUserCredentialByEmail(ctx context.Context, email string) (schemas.AuthUserCredential, error) {
+	var out schemas.AuthUserCredential
+	err := r.DB().WithContext(ctx).Raw(
+		`SELECT id, tenant_id, email, password_hash, role FROM users WHERE lower(email) = lower(?) LIMIT 1`,
+		strings.TrimSpace(email),
+	).Scan(&out).Error
+	if err != nil {
+		return schemas.AuthUserCredential{}, err
+	}
+	if out.ID == "" || out.TenantID == "" {
+		return schemas.AuthUserCredential{}, gorm.ErrRecordNotFound
+	}
+	return out, nil
 }

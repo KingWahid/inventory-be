@@ -16,6 +16,7 @@ import (
 
 type fakeAuthService struct {
 	registerFn func(ctx context.Context, in service.RegisterInput) (service.RegisterResult, error)
+	loginFn    func(ctx context.Context, in service.LoginInput) (service.LoginResult, error)
 	pingErr    error
 }
 
@@ -23,6 +24,10 @@ func (f fakeAuthService) PingDB(context.Context) error { return f.pingErr }
 
 func (f fakeAuthService) RegisterTenantAdmin(ctx context.Context, in service.RegisterInput) (service.RegisterResult, error) {
 	return f.registerFn(ctx, in)
+}
+
+func (f fakeAuthService) Login(ctx context.Context, in service.LoginInput) (service.LoginResult, error) {
+	return f.loginFn(ctx, in)
 }
 
 func TestAuthenticationEndpointContract(t *testing.T) {
@@ -47,11 +52,28 @@ func TestAuthenticationEndpointContract(t *testing.T) {
 				}, nil
 			}
 		},
+		loginFn: func(ctx context.Context, in service.LoginInput) (service.LoginResult, error) {
+			switch in.Email {
+			case "badlogin@acme.test":
+				return service.LoginResult{}, errorcodes.ErrValidationError
+			case "unauth@acme.test":
+				return service.LoginResult{}, errorcodes.ErrUnauthorized
+			case "paniclogin@acme.test":
+				return service.LoginResult{}, errors.New("unexpected login failure")
+			default:
+				return service.LoginResult{
+					AccessToken: "token-ok",
+					TokenType:   "Bearer",
+					ExpiresIn:   900,
+				}, nil
+			}
+		},
 	})
 
 	e.GET("/health", h.GetHealth)
 	e.GET("/ready", h.GetReady)
 	e.GET("/api/v1/auth/health", h.GetApiV1AuthHealth)
+	e.POST("/api/v1/auth/login", h.PostApiV1AuthLogin)
 	e.POST("/api/v1/auth/register", h.PostApiV1AuthRegister)
 
 	assertStatus := func(method, path string, body []byte, want int) {
@@ -62,6 +84,7 @@ func TestAuthenticationEndpointContract(t *testing.T) {
 		}
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
+		t.Logf("%s %s -> got=%d want=%d", method, path, rec.Code, want)
 		if rec.Code != want {
 			t.Fatalf("%s %s expected %d got %d body=%s", method, path, want, rec.Code, rec.Body.String())
 		}
@@ -102,6 +125,30 @@ func TestAuthenticationEndpointContract(t *testing.T) {
 		"password":    "strongpass123",
 	})
 	assertStatus(http.MethodPost, "/api/v1/auth/register", errBody, http.StatusInternalServerError)
+
+	loginSuccess, _ := json.Marshal(map[string]any{
+		"email":    "oklogin@acme.test",
+		"password": "strongpass123",
+	})
+	assertStatus(http.MethodPost, "/api/v1/auth/login", loginSuccess, http.StatusOK)
+
+	loginBad, _ := json.Marshal(map[string]any{
+		"email":    "badlogin@acme.test",
+		"password": "strongpass123",
+	})
+	assertStatus(http.MethodPost, "/api/v1/auth/login", loginBad, http.StatusBadRequest)
+
+	loginUnauthorized, _ := json.Marshal(map[string]any{
+		"email":    "unauth@acme.test",
+		"password": "strongpass123",
+	})
+	assertStatus(http.MethodPost, "/api/v1/auth/login", loginUnauthorized, http.StatusUnauthorized)
+
+	loginInternal, _ := json.Marshal(map[string]any{
+		"email":    "paniclogin@acme.test",
+		"password": "strongpass123",
+	})
+	assertStatus(http.MethodPost, "/api/v1/auth/login", loginInternal, http.StatusInternalServerError)
 }
 
 func TestPostApiV1AuthRegister_Success(t *testing.T) {
@@ -115,6 +162,9 @@ func TestPostApiV1AuthRegister_Success(t *testing.T) {
 				UserID:   "user-1",
 				Email:    in.AdminEmail,
 			}, nil
+		},
+		loginFn: func(ctx context.Context, in service.LoginInput) (service.LoginResult, error) {
+			return service.LoginResult{}, nil
 		},
 	})
 
@@ -152,6 +202,9 @@ func TestPostApiV1AuthRegister_Failure(t *testing.T) {
 	h := NewServerHandler(fakeAuthService{
 		registerFn: func(ctx context.Context, in service.RegisterInput) (service.RegisterResult, error) {
 			return service.RegisterResult{}, errorcodes.ErrValidationError
+		},
+		loginFn: func(ctx context.Context, in service.LoginInput) (service.LoginResult, error) {
+			return service.LoginResult{}, nil
 		},
 	})
 

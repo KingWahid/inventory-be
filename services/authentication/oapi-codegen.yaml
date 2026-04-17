@@ -1,5 +1,7 @@
 package: stub
 generate:
+  echo-server: true
+  strict-server: true
   models: true
 output: services/authentication/stub/openapi.gen.go
 output-options:

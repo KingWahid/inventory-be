@@ -4,10 +4,13 @@ import "github.com/spf13/viper"
 
 // Config holds runtime settings for authentication service.
 type Config struct {
-	AppEnv    string
-	AppPort   string
-	DBDSN     string
-	RedisAddr string
+	AppEnv                 string
+	AppPort                string
+	DBDSN                  string
+	RedisAddr              string
+	JWTSecret              string
+	JWTAccessTTLSeconds    int
+	JWTRefreshTTLSeconds   int
 }
 
 // New reads configuration from environment variables.
@@ -16,12 +19,18 @@ func New() (*Config, error) {
 	v.AutomaticEnv()
 	v.SetDefault("APP_PORT", "8082")
 	v.SetDefault("APP_ENV", "development")
+	v.SetDefault("JWT_SECRET", "change-me-in-production")
+	v.SetDefault("JWT_ACCESS_TTL_SECONDS", 900)
+	v.SetDefault("JWT_REFRESH_TTL_SECONDS", 604800)
 
 	return &Config{
-		AppEnv:    v.GetString("APP_ENV"),
-		AppPort:   v.GetString("APP_PORT"),
-		DBDSN:     v.GetString("DB_DSN"),
-		RedisAddr: v.GetString("REDIS_ADDR"),
+		AppEnv:               v.GetString("APP_ENV"),
+		AppPort:              v.GetString("APP_PORT"),
+		DBDSN:                v.GetString("DB_DSN"),
+		RedisAddr:            v.GetString("REDIS_ADDR"),
+		JWTSecret:            v.GetString("JWT_SECRET"),
+		JWTAccessTTLSeconds:  v.GetInt("JWT_ACCESS_TTL_SECONDS"),
+		JWTRefreshTTLSeconds: v.GetInt("JWT_REFRESH_TTL_SECONDS"),
 	}, nil
 }
 

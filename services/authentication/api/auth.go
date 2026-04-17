@@ -12,6 +12,31 @@ import (
 
 const endpointTimeout = 5 * time.Second
 
+// PostApiV1AuthLogin handles POST /api/v1/auth/login.
+func (h *ServerHandler) PostApiV1AuthLogin(c echo.Context) error {
+	var req stub.LoginRequest
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+
+	ctxTimeout, cancel := context.WithTimeout(c.Request().Context(), endpointTimeout)
+	defer cancel()
+
+	result, err := h.service.Login(ctxTimeout, service.LoginInput{
+		Email:    string(req.Email),
+		Password: req.Password,
+	})
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"access_token": result.AccessToken,
+		"token_type":   result.TokenType,
+		"expires_in":   result.ExpiresIn,
+	})
+}
+
 // PostApiV1AuthRegister handles POST /api/v1/auth/register.
 func (h *ServerHandler) PostApiV1AuthRegister(c echo.Context) error {
 	var req stub.RegisterRequest

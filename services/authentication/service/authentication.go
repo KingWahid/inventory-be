@@ -2,23 +2,32 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
+	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/pkg/database/schemas"
 	"github.com/KingWahid/inventory/backend/services/authentication/repository"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // AuthenticationService implements Service using PostgreSQL.
 type AuthenticationService struct {
-	repo repository.Repository
+	repo             repository.Repository
+	jwt              *commonjwt.Service
+	accessTTLSeconds int64
 }
 
 // NewAuthenticationService constructs the default authentication service.
-func NewAuthenticationService(repo repository.Repository) *AuthenticationService {
-	return &AuthenticationService{repo: repo}
+func NewAuthenticationService(repo repository.Repository, jwt *commonjwt.Service, accessTTLSeconds int64) *AuthenticationService {
+	return &AuthenticationService{
+		repo:             repo,
+		jwt:              jwt,
+		accessTTLSeconds: accessTTLSeconds,
+	}
 }
 
 // PingDB checks database connectivity.
@@ -61,5 +70,38 @@ func (s *AuthenticationService) RegisterTenantAdmin(ctx context.Context, in Regi
 		TenantID: repoResult.TenantID,
 		UserID:   repoResult.UserID,
 		Email:    repoResult.Email,
+	}, nil
+}
+
+// Login validates credential and issues an access token.
+func (s *AuthenticationService) Login(ctx context.Context, in LoginInput) (LoginResult, error) {
+	email := strings.TrimSpace(strings.ToLower(in.Email))
+	if email == "" || strings.TrimSpace(in.Password) == "" {
+		return LoginResult{}, errorcodes.ErrValidationError.WithDetails(map[string]any{
+			"message": "email and password are required",
+		})
+	}
+
+	user, err := s.repo.FindUserCredentialByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return LoginResult{}, errorcodes.ErrUnauthorized
+		}
+		return LoginResult{}, fmt.Errorf("login: find credential: %w", err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.Password)); err != nil {
+		return LoginResult{}, errorcodes.ErrUnauthorized
+	}
+
+	token, err := s.jwt.GenerateAccessToken(user.ID, user.TenantID)
+	if err != nil {
+		return LoginResult{}, fmt.Errorf("login: generate access token: %w", err)
+	}
+
+	return LoginResult{
+		AccessToken: token,
+		TokenType:   "Bearer",
+		ExpiresIn:   s.accessTTLSeconds,
 	}, nil
 }

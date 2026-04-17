@@ -14,3 +14,12 @@ type CreateTenantAdminResult struct {
 	UserID   string
 	Email    string
 }
+
+// AuthUserCredential is data required to authenticate a user.
+type AuthUserCredential struct {
+	ID           string
+	TenantID     string
+	Email        string
+	PasswordHash string
+	Role         string
+}

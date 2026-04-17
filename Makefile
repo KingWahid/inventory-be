@@ -8,10 +8,10 @@ PRE_COMMIT := pre-commit
 -include .env
 # lint/hooks: put Go's bin dir + GOPATH/bin on PATH so `go` and `golangci-lint` resolve.
 
-.PHONY: help tidy test test-endpoint generate generate-inventory generate-authentication generate-notification generate-all up down check-dsn lint lint-fix hooks-install hooks-run migration-create migration-status seed seed-mock rollback-mock run-inventory-dev run-authentication-dev run-notification-dev run-common-dev run-worker-dev
+.PHONY: help tidy test test-endpoint generate generate-inventory generate-authentication generate-notification generate-all check-openapi-generated check-openapi-routes check-openapi up down check-dsn lint lint-fix hooks-install hooks-run migration-create migration-status seed seed-mock rollback-mock run-inventory-dev run-authentication-dev run-notification-dev run-common-dev run-worker-dev
 
 help:
-	@echo "Available targets: tidy, test, test-endpoint, generate, generate-inventory, generate-authentication, generate-notification, generate-all, up, down, migration-create, migration-status, seed, seed-mock, rollback-mock, run-inventory-dev, run-authentication-dev, run-notification-dev, run-common-dev, run-worker-dev, lint, lint-fix, hooks-install, hooks-run"
+	@echo "Available targets: tidy, test, test-endpoint, generate, generate-inventory, generate-authentication, generate-notification, generate-all, check-openapi-generated, check-openapi-routes, check-openapi, up, down, migration-create, migration-status, seed, seed-mock, rollback-mock, run-inventory-dev, run-authentication-dev, run-notification-dev, run-common-dev, run-worker-dev, lint, lint-fix, hooks-install, hooks-run"
 
 # Regenerate all service stubs.
 generate: generate-inventory generate-authentication generate-notification
@@ -30,6 +30,16 @@ generate-notification:
 
 # Backward-compatible alias.
 generate-all: generate
+
+check-openapi-generated:
+	@$(MAKE) generate
+	@git diff --exit-code -- services/inventory/stub/openapi.gen.go services/authentication/stub/openapi.gen.go services/notification/stub/openapi.gen.go
+
+check-openapi-routes:
+	$(POWERSHELL) "$$files = @('services/authentication/fx/handler.go','services/notification/fx/handler.go'); $$manual = Select-String -Path $$files -Pattern 'params\.Echo\.(GET|POST|PUT|PATCH|DELETE|Any|Match|Group)\('; if ($$manual) { $$manual | ForEach-Object { Write-Host $$_.Path ':' $$_.LineNumber ':' $$_.Line }; Write-Host 'manual routes detected in fx/handler.go. use stub.RegisterHandlers only'; exit 1 }"
+	$(POWERSHELL) "$$files = @('services/authentication/fx/handler.go','services/notification/fx/handler.go'); $$generated = Select-String -Path $$files -Pattern 'stub\.RegisterHandlers\('; if (-not $$generated) { Write-Host 'missing stub.RegisterHandlers in fx/handler.go'; exit 1 }"
+
+check-openapi: check-openapi-generated check-openapi-routes
 
 tidy:
 	"$(GO)" mod tidy
