@@ -4,17 +4,22 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/your-org/inventory/backend/pkg/database/transaction"
 	"gorm.io/gorm"
 )
 
 // InventoryService implements Service using PostgreSQL.
 type InventoryService struct {
-	db *gorm.DB
+	db        *gorm.DB
+	txManager transaction.Manager
 }
 
 // NewInventoryService constructs the default inventory application service.
-func NewInventoryService(db *gorm.DB) *InventoryService {
-	return &InventoryService{db: db}
+func NewInventoryService(db *gorm.DB, txManager transaction.Manager) *InventoryService {
+	return &InventoryService{
+		db:        db,
+		txManager: txManager,
+	}
 }
 
 // PingDB checks database connectivity (readiness).
