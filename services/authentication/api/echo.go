@@ -1,0 +1,71 @@
+package api
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"time"
+
+	"github.com/KingWahid/inventory/backend/services/authentication/config"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"go.uber.org/fx"
+	"go.uber.org/zap"
+)
+
+// NewEcho builds Echo server and manages lifecycle.
+func NewEcho(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger) *echo.Echo {
+	e := echo.New()
+	e.HideBanner = true
+	e.HTTPErrorHandler = httpErrorHandler
+	e.Use(middleware.RequestID())
+	e.Use(middleware.Recover())
+	e.Use(requestLoggerMiddleware(log))
+
+	addr := ":" + cfg.AppPort
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go func() {
+				if err := e.Start(addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+					log.Fatal("echo server stopped", zap.Error(err))
+				}
+			}()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			return e.Shutdown(shutdownCtx)
+		},
+	})
+
+	return e
+}
+
+func requestLoggerMiddleware(log *zap.Logger) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			start := time.Now()
+			err := next(c)
+			req := c.Request()
+			res := c.Response()
+
+			fields := []zap.Field{
+				zap.String("request_id", res.Header().Get(echo.HeaderXRequestID)),
+				zap.String("method", req.Method),
+				zap.String("path", c.Path()),
+				zap.String("uri", req.RequestURI),
+				zap.Int("status", res.Status),
+				zap.Int64("bytes_out", res.Size),
+				zap.Int64("latency_ms", time.Since(start).Milliseconds()),
+			}
+			if err != nil {
+				fields = append(fields, zap.Error(err))
+				log.Warn("request completed with error", fields...)
+				return err
+			}
+			log.Info("request completed", fields...)
+			return nil
+		}
+	}
+}

@@ -1,0 +1,56 @@
+openapi: 3.0.3
+info:
+  title: Authentication Service API
+  version: 0.1.0
+servers:
+  - url: /
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/PlainTextOk'
+  /ready:
+    get:
+      operationId: getReady
+      tags: [health]
+      summary: Readiness probe
+      responses:
+        "200":
+          description: Service dependencies are ready
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/PlainTextOk'
+        "503":
+          description: Service is not ready
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: db not ready
+  /api/v1/auth/health:
+    get:
+      operationId: getApiV1AuthHealth
+      tags: [auth]
+      summary: Authentication API health
+      responses:
+        "200":
+          description: API is healthy
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/PlainTextOk'
+components:
+  schemas:
+    PlainTextOk:
+      type: string
+      description: Plain-text OK marker for probes
+      example: ok

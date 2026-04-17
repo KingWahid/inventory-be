@@ -91,7 +91,7 @@ services:
   authentication-service:
     build:
       context: .
-      dockerfile: services/authentication/Dockerfile
+      dockerfile: services/authentication/docker/Dockerfile
       target: dev
     working_dir: /src
     command: ["air", "-c", "services/authentication/air.toml"]
