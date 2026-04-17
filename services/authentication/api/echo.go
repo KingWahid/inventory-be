@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/services/authentication/config"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -14,13 +15,14 @@ import (
 )
 
 // NewEcho builds Echo server and manages lifecycle.
-func NewEcho(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger) *echo.Echo {
+func NewEcho(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger, jwtSvc *commonjwt.Service) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.HTTPErrorHandler = httpErrorHandler
 	e.Use(middleware.RequestID())
 	e.Use(middleware.Recover())
 	e.Use(requestLoggerMiddleware(log))
+	e.Use(RequireAccessJWT(jwtSvc))
 
 	addr := ":" + cfg.AppPort
 	lc.Append(fx.Hook{
