@@ -8,7 +8,11 @@ import (
 )
 
 func BuildIdempotencyKey(message EventMessage) string {
-	return fmt.Sprintf("eventbus:idempotency:%s:%s:%s", message.Stream, message.Group, message.ID)
+	eventID := message.ID
+	if event, err := DecodeEvent(message); err == nil && event.ID != "" {
+		eventID = event.ID
+	}
+	return fmt.Sprintf("eventbus:idempotency:%s:%s:%s", message.Stream, message.Group, eventID)
 }
 
 func (c *Client) AcquireIdempotency(ctx context.Context, key string, ttl time.Duration) (bool, error) {

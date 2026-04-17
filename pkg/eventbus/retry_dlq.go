@@ -33,7 +33,7 @@ func (c *Client) RequeueOrDLQ(
 	lastErr error,
 ) (RetryResult, error) {
 	if dlqStream == "" {
-		dlqStream = StreamDeadLetter()
+		dlqStream = DLQStream(stream)
 	}
 
 	currentRetry := RetryCount(values)
@@ -72,7 +72,7 @@ func (c *Client) MoveToDLQ(
 	lastErr error,
 ) (RetryResult, error) {
 	if dlqStream == "" {
-		dlqStream = StreamDeadLetter()
+		dlqStream = DLQStream(StreamInventoryEvents())
 	}
 
 	payload := WithRetryMetadata(values, RetryCount(values), lastErr)

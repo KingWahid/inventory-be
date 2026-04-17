@@ -2,6 +2,7 @@ package eventbus
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -93,6 +94,139 @@ func TestBuildIdempotencyKey(t *testing.T) {
 	want := "eventbus:idempotency:inventory.events:alerts:168-0"
 	if got != want {
 		t.Fatalf("unexpected idempotency key: got %s want %s", got, want)
+	}
+}
+
+func TestBuildIdempotencyKeyPrefersEventID(t *testing.T) {
+	payload, err := json.Marshal(map[string]any{"foo": "bar"})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	msg := EventMessage{
+		ID:     "redis-id-1",
+		Stream: "inventory.events",
+		Group:  "alerts",
+		Values: map[string]any{
+			FieldEventID:          "evt-123",
+			FieldEventType:        "inventory.stock.changed",
+			FieldEventVersion:     "1",
+			FieldEventStream:      "inventory.events",
+			FieldEventCreatedAt:   time.Now().UTC().Format(time.RFC3339Nano),
+			FieldEventPublishedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			FieldEventPayload:     string(payload),
+		},
+	}
+	got := BuildIdempotencyKey(msg)
+	want := "eventbus:idempotency:inventory.events:alerts:evt-123"
+	if got != want {
+		t.Fatalf("unexpected idempotency key: got %s want %s", got, want)
+	}
+}
+
+func TestPublishEventAndDecodeEvent(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("miniredis: %v", err)
+	}
+	t.Cleanup(func() { mr.Close() })
+
+	c, err := New(mr.Addr())
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+
+	ctx := context.Background()
+	stream := StreamName("inventory", "stock", 1)
+	group := ConsumerGroup("inventory", "stock")
+	consumer := "c1"
+	if err := c.EnsureGroup(ctx, stream, group); err != nil {
+		t.Fatalf("EnsureGroup: %v", err)
+	}
+
+	payload, err := EncodeEventPayload(map[string]any{"sku": "A-1"})
+	if err != nil {
+		t.Fatalf("EncodeEventPayload: %v", err)
+	}
+	ev := BaseEvent{
+		ID:          "evt-1",
+		Type:        EventType("inventory", "stock", "changed"),
+		Version:     1,
+		Stream:      stream,
+		CreatedAt:   time.Now().UTC(),
+		PublishedAt: time.Now().UTC(),
+		Payload:     payload,
+	}
+	if _, err := c.PublishEvent(ctx, ev); err != nil {
+		t.Fatalf("PublishEvent: %v", err)
+	}
+
+	msgs, err := c.ReadGroup(ctx, stream, group, consumer, 1, time.Millisecond)
+	if err != nil {
+		t.Fatalf("ReadGroup: %v", err)
+	}
+	if len(msgs) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(msgs))
+	}
+
+	got, err := DecodeEvent(msgs[0])
+	if err != nil {
+		t.Fatalf("DecodeEvent: %v", err)
+	}
+	if got.ID != ev.ID || got.Type != ev.Type || got.Stream != ev.Stream {
+		t.Fatalf("decoded event mismatch: %+v", got)
+	}
+}
+
+func TestSignAndVerifyEvent(t *testing.T) {
+	payload, err := EncodeEventPayload(map[string]any{"x": 1})
+	if err != nil {
+		t.Fatalf("EncodeEventPayload: %v", err)
+	}
+	ev := BaseEvent{
+		ID:          "evt-2",
+		Type:        "inventory.stock.changed",
+		Version:     1,
+		Stream:      "inventory:stock:v1",
+		CreatedAt:   time.Now().UTC(),
+		PublishedAt: time.Now().UTC(),
+		Payload:     payload,
+	}
+	sig, err := SignEvent("secret", ev)
+	if err != nil {
+		t.Fatalf("SignEvent: %v", err)
+	}
+	ev.Signature = sig
+	ok, err := VerifyEvent("secret", ev)
+	if err != nil {
+		t.Fatalf("VerifyEvent: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected signature verification success")
+	}
+
+	ev.Payload = []byte(`{"x":2}`)
+	ok, err = VerifyEvent("secret", ev)
+	if err != nil {
+		t.Fatalf("VerifyEvent(tampered): %v", err)
+	}
+	if ok {
+		t.Fatal("expected signature verification failure for tampered payload")
+	}
+}
+
+func TestNamingConventions(t *testing.T) {
+	if got := StreamName("notification", "email", 1); got != "notification:email:v1" {
+		t.Fatalf("unexpected stream name: %s", got)
+	}
+	if got := EventType("notification", "email", "requested"); got != "notification.email.requested" {
+		t.Fatalf("unexpected event type: %s", got)
+	}
+	if got := ConsumerGroup("notification", "email"); got != "notification-email-consumer" {
+		t.Fatalf("unexpected consumer group: %s", got)
+	}
+	if got := DLQStream("notification:email:v1"); got != "dlq:notification:email:v1" {
+		t.Fatalf("unexpected dlq stream: %s", got)
 	}
 }
 

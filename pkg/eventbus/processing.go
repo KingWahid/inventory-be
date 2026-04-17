@@ -31,7 +31,7 @@ func (c *Client) HandleMessage(
 	handler func(context.Context, EventMessage) error,
 ) (HandleResult, error) {
 	if opts.DLQStream == "" {
-		opts.DLQStream = StreamDeadLetter()
+		opts.DLQStream = DLQStream(msg.Stream)
 	}
 
 	if opts.IdempotencyKey != "" {
