@@ -13,7 +13,7 @@ func bindError(err error) error {
 		"errors": []map[string]any{
 			{
 				"field":  "",
-				"rule":   "bind",
+				"rule":   errorcodes.ValidationRuleBind,
 				"value":  "",
 				"reason": err.Error(),
 			},
@@ -29,7 +29,7 @@ func validationError(err error) error {
 			"errors": []map[string]any{
 				{
 					"field":  "",
-					"rule":   "validate",
+					"rule":   errorcodes.ValidationRuleValidate,
 					"value":  "",
 					"reason": err.Error(),
 				},

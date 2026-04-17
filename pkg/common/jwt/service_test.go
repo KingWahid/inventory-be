@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
 )
 
 func TestGenerateAndParseAccessToken(t *testing.T) {
@@ -70,7 +72,7 @@ func TestTokenTypeMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate access token: %v", err)
 	}
-	if _, err := svc.ParseRefresh(accessToken); !errors.Is(err, ErrInvalidTokenType) {
+	if _, err := svc.ParseRefresh(accessToken); !errors.Is(err, errorcodes.ErrJWTInvalidTokenType) {
 		t.Fatalf("expected ErrInvalidTokenType, got %v", err)
 	}
 
@@ -78,7 +80,7 @@ func TestTokenTypeMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate refresh token: %v", err)
 	}
-	if _, err := svc.ParseAccess(refreshToken); !errors.Is(err, ErrInvalidTokenType) {
+	if _, err := svc.ParseAccess(refreshToken); !errors.Is(err, errorcodes.ErrJWTInvalidTokenType) {
 		t.Fatalf("expected ErrInvalidTokenType, got %v", err)
 	}
 }

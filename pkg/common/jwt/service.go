@@ -6,6 +6,8 @@ import (
 	"time"
 
 	jwtv4 "github.com/golang-jwt/jwt/v4"
+
+	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
 )
 
 type Service struct {
@@ -17,10 +19,10 @@ type Service struct {
 
 func NewService(secret string, accessTTL, refreshTTL time.Duration) (*Service, error) {
 	if secret == "" {
-		return nil, ErrInvalidSecret
+		return nil, errorcodes.ErrJWTInvalidSecret
 	}
 	if accessTTL <= 0 || refreshTTL <= 0 {
-		return nil, ErrInvalidTTL
+		return nil, errorcodes.ErrJWTInvalidTTL
 	}
 
 	return &Service{
@@ -41,13 +43,13 @@ func (s *Service) GenerateRefreshToken(subject, tenantID string) (string, error)
 
 func (s *Service) generateToken(subject, tenantID, tokenType string, ttl time.Duration) (string, error) {
 	if subject == "" {
-		return "", ErrInvalidSubject
+		return "", errorcodes.ErrJWTInvalidSubject
 	}
 	if tenantID == "" {
-		return "", ErrInvalidTenantID
+		return "", errorcodes.ErrJWTInvalidTenantID
 	}
 	if tokenType != TokenTypeAccess && tokenType != TokenTypeRefresh {
-		return "", ErrInvalidTokenType
+		return "", errorcodes.ErrJWTInvalidTokenType
 	}
 
 	now := s.now()
@@ -84,7 +86,7 @@ func (s *Service) ParseAccess(token string) (*Claims, error) {
 		return nil, err
 	}
 	if claims.TokenType != TokenTypeAccess {
-		return nil, ErrInvalidTokenType
+		return nil, errorcodes.ErrJWTInvalidTokenType
 	}
 	return claims, nil
 }
@@ -95,7 +97,7 @@ func (s *Service) ParseRefresh(token string) (*Claims, error) {
 		return nil, err
 	}
 	if claims.TokenType != TokenTypeRefresh {
-		return nil, ErrInvalidTokenType
+		return nil, errorcodes.ErrJWTInvalidTokenType
 	}
 	return claims, nil
 }
@@ -103,38 +105,38 @@ func (s *Service) ParseRefresh(token string) (*Claims, error) {
 func (s *Service) parseToken(token string) (*Claims, error) {
 	parsed, err := jwtv4.ParseWithClaims(token, &Claims{}, func(t *jwtv4.Token) (any, error) {
 		if _, ok := t.Method.(*jwtv4.SigningMethodHMAC); !ok {
-			return nil, ErrInvalidSigning
+			return nil, errorcodes.ErrJWTInvalidSigning
 		}
 		return s.secret, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrParseToken, err)
+		return nil, fmt.Errorf("%w: %v", errorcodes.ErrJWTParseToken, err)
 	}
 	if !parsed.Valid {
-		return nil, ErrParseToken
+		return nil, errorcodes.ErrJWTParseToken
 	}
 
 	claims, ok := parsed.Claims.(*Claims)
 	if !ok {
-		return nil, ErrInvalidClaims
+		return nil, errorcodes.ErrJWTInvalidClaims
 	}
 	if claims.Subject == "" || claims.TenantID == "" || claims.ExpiresAt == nil {
-		return nil, ErrInvalidClaims
+		return nil, errorcodes.ErrJWTInvalidClaims
 	}
 
 	if err := claims.Valid(); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrParseToken, err)
+		return nil, fmt.Errorf("%w: %v", errorcodes.ErrJWTParseToken, err)
 	}
 
 	if claims.TokenType != TokenTypeAccess && claims.TokenType != TokenTypeRefresh {
-		return nil, ErrInvalidTokenType
+		return nil, errorcodes.ErrJWTInvalidTokenType
 	}
 
 	return claims, nil
 }
 
 func IsParseError(err error) bool {
-	return errors.Is(err, ErrParseToken) ||
-		errors.Is(err, ErrInvalidClaims) ||
-		errors.Is(err, ErrInvalidSigning)
+	return errors.Is(err, errorcodes.ErrJWTParseToken) ||
+		errors.Is(err, errorcodes.ErrJWTInvalidClaims) ||
+		errors.Is(err, errorcodes.ErrJWTInvalidSigning)
 }
