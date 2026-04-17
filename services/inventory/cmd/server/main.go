@@ -1,29 +1,25 @@
 package main
 
 import (
-	"net/http"
+	uberfx "go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
+	"go.uber.org/zap"
 
-	"github.com/labstack/echo/v4"
-	"github.com/spf13/viper"
+	"github.com/your-org/inventory/backend/services/inventory/config"
+	invfx "github.com/your-org/inventory/backend/services/inventory/fx"
 )
 
 func main() {
-	cfg := viper.New()
-	cfg.AutomaticEnv()
-	cfg.SetDefault("APP_PORT", "8080")
-	port := cfg.GetString("APP_PORT")
-
-	e := echo.New()
-	e.HideBanner = true
-
-	e.GET("/health", func(c echo.Context) error {
-		return c.String(http.StatusOK, "ok")
-	})
-
-	inv := e.Group("/api/v1/inventory")
-	inv.GET("/health", func(c echo.Context) error {
-		return c.String(http.StatusOK, "ok")
-	})
-
-	e.Logger.Fatal(e.Start(":" + port))
+	uberfx.New(
+		uberfx.WithLogger(func(log *zap.Logger) fxevent.Logger {
+			return &fxevent.ZapLogger{Logger: log}
+		}),
+		invfx.Module,
+		uberfx.Invoke(func(log *zap.Logger, cfg *config.Config) {
+			log.Info("starting inventory-api",
+				zap.String("env", cfg.AppEnv),
+				zap.String("addr", ":"+cfg.AppPort),
+			)
+		}),
+	).Run()
 }

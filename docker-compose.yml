@@ -33,7 +33,7 @@ services:
   inventory-api:
     build:
       context: .
-      dockerfile: services/inventory/Dockerfile
+      dockerfile: services/inventory/docker/Dockerfile
       target: dev
     working_dir: /src
     command: ["air", "-c", "services/inventory/air.toml"]
