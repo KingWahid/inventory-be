@@ -4,12 +4,13 @@ GOOSE := "$(GO)" run github.com/pressly/goose/v3/cmd/goose
 POWERSHELL := powershell -NoProfile -ExecutionPolicy Bypass -Command
 GOLANGCI_LINT := golangci-lint
 PRE_COMMIT := pre-commit
+-include .env
 # lint/hooks: put Go's bin dir + GOPATH/bin on PATH so `go` and `golangci-lint` resolve.
 
-.PHONY: help tidy test up down check-dsn lint lint-fix hooks-install hooks-run migration-create migration-status
+.PHONY: help tidy test up down check-dsn lint lint-fix hooks-install hooks-run migration-create migration-status seed seed-mock rollback-mock
 
 help:
-	@echo "Available targets: tidy, test, up, down, migration-create, migration-status, lint, lint-fix, hooks-install, hooks-run"
+	@echo "Available targets: tidy, test, up, down, migration-create, migration-status, seed, seed-mock, rollback-mock, lint, lint-fix, hooks-install, hooks-run"
 
 tidy:
 	"$(GO)" mod tidy
@@ -37,6 +38,15 @@ down: check-dsn
 
 migration-status: check-dsn
 	$(POWERSHELL) "$$env:GOOSE_DRIVER='postgres'; $$env:GOOSE_DBSTRING='$(DB_DSN)'; & '$(GO)' run github.com/pressly/goose/v3/cmd/goose -dir $(MIGRATIONS_DIR) status"
+
+seed: check-dsn
+	$(POWERSHELL) "$$env:DB_DSN='$(DB_DSN)'; & '$(GO)' run ./infra/database/cmd/seed"
+
+seed-mock: check-dsn
+	$(POWERSHELL) "$$env:DB_DSN='$(DB_DSN)'; & '$(GO)' run ./infra/database/cmd/seed --mode seed"
+
+rollback-mock: check-dsn
+	$(POWERSHELL) "$$env:DB_DSN='$(DB_DSN)'; & '$(GO)' run ./infra/database/cmd/seed --mode rollback"
 
 migration-create:
 ifeq ($(strip $(NAME)),)
