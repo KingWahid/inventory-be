@@ -8,7 +8,11 @@ import (
 	commonlogger "github.com/KingWahid/inventory/backend/pkg/common/logger"
 	"github.com/KingWahid/inventory/backend/services/inventory/api"
 	"github.com/KingWahid/inventory/backend/services/inventory/config"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/auth"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/catalog"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/movement"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse"
 	"github.com/KingWahid/inventory/backend/services/inventory/service"
 )
 
@@ -32,7 +36,11 @@ var Module = uberfx.Options(
 	commonlogger.Module,
 	infpostgres.FxModule(),
 	infraredis.FxModule(),
+	auth.Module,
+	audit.Module,
 	catalog.Module,
+	movement.Module,
+	warehouse.Module,
 	service.Module,
 	api.EchoModule,
 	HandlerModule,
