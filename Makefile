@@ -7,10 +7,10 @@ PRE_COMMIT := pre-commit
 -include .env
 # lint/hooks: put Go's bin dir + GOPATH/bin on PATH so `go` and `golangci-lint` resolve.
 
-.PHONY: help tidy test up down check-dsn lint lint-fix hooks-install hooks-run migration-create migration-status seed seed-mock rollback-mock
+.PHONY: help tidy test up down check-dsn lint lint-fix hooks-install hooks-run migration-create migration-status seed seed-mock rollback-mock run-inventory-dev run-authentication-dev run-notification-dev run-common-dev run-worker-dev
 
 help:
-	@echo "Available targets: tidy, test, up, down, migration-create, migration-status, seed, seed-mock, rollback-mock, lint, lint-fix, hooks-install, hooks-run"
+	@echo "Available targets: tidy, test, up, down, migration-create, migration-status, seed, seed-mock, rollback-mock, run-inventory-dev, run-authentication-dev, run-notification-dev, run-common-dev, run-worker-dev, lint, lint-fix, hooks-install, hooks-run"
 
 tidy:
 	"$(GO)" mod tidy
@@ -47,6 +47,21 @@ seed-mock: check-dsn
 
 rollback-mock: check-dsn
 	$(POWERSHELL) "$$env:DB_DSN='$(DB_DSN)'; & '$(GO)' run ./infra/database/cmd/seed --mode rollback"
+
+run-inventory-dev:
+	"$(GO)" run github.com/air-verse/air@latest -c services/inventory/air.toml
+
+run-authentication-dev:
+	"$(GO)" run github.com/air-verse/air@latest -c services/authentication/air.toml
+
+run-notification-dev:
+	"$(GO)" run github.com/air-verse/air@latest -c services/notification/air.toml
+
+run-common-dev:
+	"$(GO)" run github.com/air-verse/air@latest -c services/common/air.toml
+
+run-worker-dev:
+	"$(GO)" run github.com/air-verse/air@latest -c workers/air.toml
 
 migration-create:
 ifeq ($(strip $(NAME)),)

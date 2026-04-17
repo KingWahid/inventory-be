@@ -10,6 +10,11 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/server ./services/inventory/cmd/server
 
+FROM golang:${GO_VERSION} AS dev
+WORKDIR /src
+RUN apk add --no-cache ca-certificates git curl && go install github.com/air-verse/air@latest
+ENV PATH="/root/go/bin:${PATH}"
+
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates curl
 WORKDIR /app
