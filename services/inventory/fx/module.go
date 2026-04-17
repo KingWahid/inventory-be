@@ -23,6 +23,10 @@ var Module = uberfx.Options(
 			func(c *config.Config) infraredis.RedisConfig { return c },
 			uberfx.As(new(infraredis.RedisConfig)),
 		),
+		uberfx.Annotate(
+			func(c *config.Config) commonlogger.AppEnvProvider { return c },
+			uberfx.As(new(commonlogger.AppEnvProvider)),
+		),
 	),
 	commonlogger.Module,
 	infpostgres.FxModule(),
