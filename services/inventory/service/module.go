@@ -1,14 +1,13 @@
 package service
 
 import (
-	"database/sql"
-
 	"go.uber.org/fx"
+	"gorm.io/gorm"
 )
 
 // Module provides the inventory application Service.
 var Module = fx.Module("service",
-	fx.Provide(func(db *sql.DB) Service {
+	fx.Provide(func(db *gorm.DB) Service {
 		return NewInventoryService(db)
 	}),
 )

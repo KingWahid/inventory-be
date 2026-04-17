@@ -11,11 +11,14 @@ type DBConfig interface {
 	GetDBDSN() string
 }
 
-// FxModule registers *sql.DB from any provided DBConfig.
+// FxModule registers *sql.DB and *gorm.DB (same pool) from any provided DBConfig.
 func FxModule() fx.Option {
 	return fx.Module("postgres",
-		fx.Provide(func(lc fx.Lifecycle, cfg DBConfig) (*sql.DB, error) {
-			return NewDB(lc, cfg.GetDBDSN())
-		}),
+		fx.Provide(
+			func(lc fx.Lifecycle, cfg DBConfig) (*sql.DB, error) {
+				return NewDB(lc, cfg.GetDBDSN())
+			},
+			OpenGORM,
+		),
 	)
 }
