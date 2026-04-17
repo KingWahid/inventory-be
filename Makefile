@@ -8,13 +8,13 @@ PRE_COMMIT := pre-commit
 -include .env
 # lint/hooks: put Go's bin dir + GOPATH/bin on PATH so `go` and `golangci-lint` resolve.
 
-.PHONY: help tidy test generate generate-inventory generate-authentication generate-all up down check-dsn lint lint-fix hooks-install hooks-run migration-create migration-status seed seed-mock rollback-mock run-inventory-dev run-authentication-dev run-notification-dev run-common-dev run-worker-dev
+.PHONY: help tidy test generate generate-inventory generate-authentication generate-notification generate-all up down check-dsn lint lint-fix hooks-install hooks-run migration-create migration-status seed seed-mock rollback-mock run-inventory-dev run-authentication-dev run-notification-dev run-common-dev run-worker-dev
 
 help:
-	@echo "Available targets: tidy, test, generate, generate-inventory, generate-authentication, generate-all, up, down, migration-create, migration-status, seed, seed-mock, rollback-mock, run-inventory-dev, run-authentication-dev, run-notification-dev, run-common-dev, run-worker-dev, lint, lint-fix, hooks-install, hooks-run"
+	@echo "Available targets: tidy, test, generate, generate-inventory, generate-authentication, generate-notification, generate-all, up, down, migration-create, migration-status, seed, seed-mock, rollback-mock, run-inventory-dev, run-authentication-dev, run-notification-dev, run-common-dev, run-worker-dev, lint, lint-fix, hooks-install, hooks-run"
 
 # Regenerate all service stubs.
-generate: generate-inventory generate-authentication
+generate: generate-inventory generate-authentication generate-notification
 
 # Regenerate services/inventory/stub/openapi.gen.go
 generate-inventory:
@@ -23,6 +23,10 @@ generate-inventory:
 # Regenerate services/authentication/stub/openapi.gen.go
 generate-authentication:
 	$(OAPI_CODEGEN) -config services/authentication/oapi-codegen.yaml services/authentication/openapi/openapi.yaml
+
+# Regenerate services/notification/stub/openapi.gen.go
+generate-notification:
+	$(OAPI_CODEGEN) -config services/notification/oapi-codegen.yaml services/notification/openapi/openapi.yaml
 
 # Backward-compatible alias.
 generate-all: generate

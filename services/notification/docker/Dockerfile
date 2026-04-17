@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Build from repo module root: docker build -f services/notification/Dockerfile .
+# Build from repo module root: docker build -f services/notification/docker/Dockerfile .
 ARG GO_VERSION=1.26-alpine
 
 FROM golang:${GO_VERSION} AS builder

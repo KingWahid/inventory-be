@@ -1,0 +1,8 @@
+package: stub
+generate:
+  echo-server: true
+  strict-server: true
+  models: true
+output: services/notification/stub/openapi.gen.go
+output-options:
+  skip-prune: true

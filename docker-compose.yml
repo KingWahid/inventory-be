@@ -64,7 +64,7 @@ services:
   notification-service:
     build:
       context: .
-      dockerfile: services/notification/Dockerfile
+      dockerfile: services/notification/docker/Dockerfile
       target: dev
     working_dir: /src
     command: ["air", "-c", "services/notification/air.toml"]
