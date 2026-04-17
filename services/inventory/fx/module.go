@@ -3,20 +3,30 @@ package fx
 import (
 	uberfx "go.uber.org/fx"
 
+	infpostgres "github.com/your-org/inventory/backend/infra/postgres"
+	infraredis "github.com/your-org/inventory/backend/infra/redis"
+	commonlogger "github.com/your-org/inventory/backend/pkg/common/logger"
 	"github.com/your-org/inventory/backend/services/inventory/api"
 	"github.com/your-org/inventory/backend/services/inventory/config"
-	"github.com/your-org/inventory/backend/services/inventory/database"
-	"github.com/your-org/inventory/backend/services/inventory/logger"
-	"github.com/your-org/inventory/backend/services/inventory/redis"
 	"github.com/your-org/inventory/backend/services/inventory/service"
 )
 
 // Module composes all inventory fx modules (infra + HTTP echo + handler wiring).
 var Module = uberfx.Options(
 	config.Module,
-	logger.Module,
-	database.Module,
-	redis.Module,
+	uberfx.Provide(
+		uberfx.Annotate(
+			func(c *config.Config) infpostgres.DBConfig { return c },
+			uberfx.As(new(infpostgres.DBConfig)),
+		),
+		uberfx.Annotate(
+			func(c *config.Config) infraredis.RedisConfig { return c },
+			uberfx.As(new(infraredis.RedisConfig)),
+		),
+	),
+	commonlogger.Module,
+	infpostgres.FxModule(),
+	infraredis.FxModule(),
 	service.Module,
 	api.EchoModule,
 	HandlerModule,

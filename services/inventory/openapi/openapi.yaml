@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: Inventory API
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness probe
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/PlainTextOk"
+  /ready:
+    get:
+      operationId: getReady
+      summary: Readiness probe (database)
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/PlainTextOk"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/inventory/health:
+    get:
+      operationId: getInventoryHealth
+      summary: Inventory service liveness under API prefix
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/PlainTextOk"
+components:
+  schemas:
+    PlainTextOk:
+      type: string
+      description: Plain-text OK marker for probes
+      example: ok
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Machine-readable error message

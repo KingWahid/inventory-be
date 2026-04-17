@@ -5,17 +5,20 @@ import (
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-
-	"github.com/your-org/inventory/backend/services/inventory/config"
 )
 
-// New builds a Zap logger from APP_ENV (development → development config, else production).
-func New(lc fx.Lifecycle, cfg *config.Config) (*zap.Logger, error) {
+// AppEnvProvider is satisfied by service configs that expose APP_ENV (or equivalent).
+type AppEnvProvider interface {
+	GetAppEnv() string
+}
+
+// New builds a Zap logger: development config when GetAppEnv() == "development", else production.
+func New(lc fx.Lifecycle, env AppEnvProvider) (*zap.Logger, error) {
 	var (
 		log *zap.Logger
 		err error
 	)
-	if cfg.AppEnv == "development" {
+	if env.GetAppEnv() == "development" {
 		log, err = zap.NewDevelopment()
 	} else {
 		log, err = zap.NewProduction()

@@ -8,6 +8,7 @@ import (
 
 	"github.com/your-org/inventory/backend/services/inventory/api"
 	"github.com/your-org/inventory/backend/services/inventory/service"
+	"github.com/your-org/inventory/backend/services/inventory/stub"
 )
 
 // HandlerParams holds dependencies for route registration (billing-style fx.In bundle).
@@ -19,13 +20,12 @@ type HandlerParams struct {
 	Log  *zap.Logger
 }
 
-// RegisterRoutes wires ServerHandler and mounts routes on Echo.
-// When OpenAPI codegen exists, call stub.RegisterHandlers(params.Echo, handler) here instead of api.Register.
+// RegisterRoutes wires ServerHandler and mounts routes from OpenAPI (stub.RegisterHandlers).
 func RegisterRoutes(params HandlerParams) {
 	params.Log.Debug("registering inventory routes")
 
 	handler := api.NewServerHandler(params.Svc)
-	api.Register(params.Echo, handler)
+	stub.RegisterHandlers(params.Echo, handler)
 
 	params.Log.Info("inventory routes registered")
 }

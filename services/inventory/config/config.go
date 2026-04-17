@@ -28,3 +28,20 @@ func New() (*Config, error) {
 		JWTSecret: v.GetString("JWT_SECRET"),
 	}, nil
 }
+
+// GetAppEnv implements pkg/common/logger.AppEnvProvider.
+func (c *Config) GetAppEnv() string {
+	return c.AppEnv
+}
+
+// GetRedisAddr implements infra/redis.RedisConfig.
+func (c *Config) GetRedisAddr() string {
+	return c.RedisAddr
+}
+
+// GetDBDSN implements infra/postgres.DBConfig.
+func (c *Config) GetDBDSN() string {
+	return c.DBDSN
+}
+
+
