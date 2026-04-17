@@ -11,6 +11,9 @@ type Cache interface {
 	Set(ctx context.Context, key, value string, ttl time.Duration) error
 }
 
+// QueryFunc executes a DB query and fills data into the provided result pointer.
+type QueryFunc[T any] func(ctx context.Context, out *T) error
+
 func GetFromCacheOrDB[T any](
 	ctx context.Context,
 	c Cache,
@@ -41,4 +44,28 @@ func GetFromCacheOrDB[T any](
 	}
 
 	return fromDB, nil
+}
+
+// GetFromCacheOrDBInto is docs-friendly when query code naturally fills a pointer.
+func GetFromCacheOrDBInto[T any](
+	ctx context.Context,
+	c Cache,
+	key string,
+	ttl time.Duration,
+	queryFn QueryFunc[T],
+) (T, error) {
+	return GetFromCacheOrDB(
+		ctx,
+		c,
+		key,
+		ttl,
+		func(ctx context.Context) (T, error) {
+			var out T
+			if err := queryFn(ctx, &out); err != nil {
+				var zero T
+				return zero, err
+			}
+			return out, nil
+		},
+	)
 }

@@ -130,3 +130,48 @@ func TestGetFromCacheOrDBReturnsDBError(t *testing.T) {
 		t.Fatalf("expected db error, got: %v", err)
 	}
 }
+
+func TestGetFromCacheOrDBIntoCacheMiss(t *testing.T) {
+	dbCalled := false
+	item, err := GetFromCacheOrDBInto[cachedItem](
+		context.Background(),
+		mockCache{
+			getFn: func(ctx context.Context, key string) (string, error) {
+				return "", nil
+			},
+		},
+		"cache:key",
+		5*time.Minute,
+		func(ctx context.Context, out *cachedItem) error {
+			dbCalled = true
+			out.ID = "p4"
+			out.Name = "milk"
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !dbCalled {
+		t.Fatal("expected queryFn to be called")
+	}
+	if item.ID != "p4" || item.Name != "milk" {
+		t.Fatalf("unexpected item: %+v", item)
+	}
+}
+
+func TestGetFromCacheOrDBIntoQueryError(t *testing.T) {
+	expectedErr := errors.New("query failed")
+	_, err := GetFromCacheOrDBInto[cachedItem](
+		context.Background(),
+		mockCache{},
+		"cache:key",
+		5*time.Minute,
+		func(ctx context.Context, out *cachedItem) error {
+			return expectedErr
+		},
+	)
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("expected query error, got: %v", err)
+	}
+}
