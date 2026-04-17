@@ -4,10 +4,10 @@ import "github.com/KingWahid/inventory/backend/services/authentication/service"
 
 // ServerHandler holds HTTP handlers and service dependencies.
 type ServerHandler struct {
-	svc service.Service
+	service service.Service
 }
 
 // NewServerHandler constructs the API handler bundle.
 func NewServerHandler(svc service.Service) *ServerHandler {
-	return &ServerHandler{svc: svc}
+	return &ServerHandler{service: svc}
 }

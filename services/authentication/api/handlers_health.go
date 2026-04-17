@@ -19,7 +19,7 @@ func (h *ServerHandler) GetApiV1AuthHealth(c echo.Context) error {
 
 // GetReady handles GET /ready.
 func (h *ServerHandler) GetReady(c echo.Context) error {
-	if err := h.svc.PingDB(c.Request().Context()); err != nil {
+	if err := h.service.PingDB(c.Request().Context()); err != nil {
 		zap.L().Warn("authentication readiness failed", zap.Error(err))
 		return c.String(http.StatusServiceUnavailable, "db not ready")
 	}
