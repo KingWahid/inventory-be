@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	"gorm.io/gorm"
 )
 

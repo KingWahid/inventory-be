@@ -26,4 +26,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/your-org/inventory/backend
+      - github.com/KingWahid/inventory/backend

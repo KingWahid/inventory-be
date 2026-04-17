@@ -11,7 +11,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
-	"github.com/your-org/inventory/backend/services/inventory/config"
+	"github.com/KingWahid/inventory/backend/services/inventory/config"
 )
 
 // NewEcho builds Echo with error handling and lifecycle; routes are registered separately (see fx.RegisterRoutes).

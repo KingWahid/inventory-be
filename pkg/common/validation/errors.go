@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 )
 
 func bindError(err error) error {

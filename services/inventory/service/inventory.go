@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/your-org/inventory/backend/pkg/database/transaction"
+	"github.com/KingWahid/inventory/backend/pkg/database/transaction"
 	"gorm.io/gorm"
 )
 

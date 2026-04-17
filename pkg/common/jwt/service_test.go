@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 )
 
 func TestGenerateAndParseAccessToken(t *testing.T) {

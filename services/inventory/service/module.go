@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/your-org/inventory/backend/pkg/database/transaction"
+	"github.com/KingWahid/inventory/backend/pkg/database/transaction"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 )

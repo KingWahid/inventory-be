@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

@@ -5,8 +5,8 @@ import (
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
 
-	"github.com/your-org/inventory/backend/services/inventory/config"
-	invfx "github.com/your-org/inventory/backend/services/inventory/fx"
+	"github.com/KingWahid/inventory/backend/services/inventory/config"
+	invfx "github.com/KingWahid/inventory/backend/services/inventory/fx"
 )
 
 func main() {

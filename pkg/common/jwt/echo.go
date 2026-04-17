@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 )
 
 // GetJWTFromEchoContext returns the raw Bearer token from the Authorization header.

@@ -3,7 +3,7 @@ package api
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 )
 
 func httpErrorHandler(err error, c echo.Context) {

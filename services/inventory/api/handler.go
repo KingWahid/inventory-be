@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/your-org/inventory/backend/services/inventory/service"
+	"github.com/KingWahid/inventory/backend/services/inventory/service"
 )
 
 // ServerHandler holds HTTP handlers and their application dependencies (billing-style).

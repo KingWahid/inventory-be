@@ -7,7 +7,7 @@ import (
 
 	jwtv4 "github.com/golang-jwt/jwt/v4"
 
-	"github.com/your-org/inventory/backend/pkg/common/errorcodes"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 )
 
 type Service struct {

@@ -10,7 +10,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/spf13/viper"
 
-	"github.com/your-org/inventory/backend/infra/database/cmd/seed/service"
+	"github.com/KingWahid/inventory/backend/infra/database/cmd/seed/service"
 )
 
 func main() {

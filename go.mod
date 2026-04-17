@@ -1,4 +1,4 @@
-module github.com/your-org/inventory/backend
+module github.com/KingWahid/inventory/backend
 
 go 1.26.2
 

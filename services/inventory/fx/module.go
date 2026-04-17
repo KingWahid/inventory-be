@@ -3,12 +3,13 @@ package fx
 import (
 	uberfx "go.uber.org/fx"
 
-	infpostgres "github.com/your-org/inventory/backend/infra/postgres"
-	infraredis "github.com/your-org/inventory/backend/infra/redis"
-	commonlogger "github.com/your-org/inventory/backend/pkg/common/logger"
-	"github.com/your-org/inventory/backend/services/inventory/api"
-	"github.com/your-org/inventory/backend/services/inventory/config"
-	"github.com/your-org/inventory/backend/services/inventory/service"
+	infpostgres "github.com/KingWahid/inventory/backend/infra/postgres"
+	infraredis "github.com/KingWahid/inventory/backend/infra/redis"
+	commonlogger "github.com/KingWahid/inventory/backend/pkg/common/logger"
+	"github.com/KingWahid/inventory/backend/services/inventory/api"
+	"github.com/KingWahid/inventory/backend/services/inventory/config"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/catalog"
+	"github.com/KingWahid/inventory/backend/services/inventory/service"
 )
 
 // Module composes all inventory fx modules (infra + HTTP echo + handler wiring).
@@ -31,6 +32,7 @@ var Module = uberfx.Options(
 	commonlogger.Module,
 	infpostgres.FxModule(),
 	infraredis.FxModule(),
+	catalog.Module,
 	service.Module,
 	api.EchoModule,
 	HandlerModule,

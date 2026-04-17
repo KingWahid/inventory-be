@@ -6,9 +6,9 @@ import (
 	uberfx "go.uber.org/fx"
 	"go.uber.org/zap"
 
-	"github.com/your-org/inventory/backend/services/inventory/api"
-	"github.com/your-org/inventory/backend/services/inventory/service"
-	"github.com/your-org/inventory/backend/services/inventory/stub"
+	"github.com/KingWahid/inventory/backend/services/inventory/api"
+	"github.com/KingWahid/inventory/backend/services/inventory/service"
+	"github.com/KingWahid/inventory/backend/services/inventory/stub"
 )
 
 // HandlerParams holds dependencies for route registration (billing-style fx.In bundle).
