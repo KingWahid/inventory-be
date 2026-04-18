@@ -24,10 +24,11 @@ type Movement struct {
 	CreatedBy              string
 	Status                 string
 	Notes                  *string
-	IdempotencyKey         *string
-	Lines                  []MovementLine
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	IdempotencyKey             *string
+	IdempotencyRequestHash     *string // SHA-256 hex of raw POST body when Idempotency-Key header was used
+	Lines                      []MovementLine
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
 }
 
 // MovementLine is one product line on a movement.
@@ -50,9 +51,10 @@ type movementRow struct {
 	CreatedBy              string    `gorm:"column:created_by;type:uuid"`
 	Status                 string    `gorm:"column:status"`
 	Notes                  *string   `gorm:"column:notes"`
-	IdempotencyKey         *string   `gorm:"column:idempotency_key"`
-	CreatedAt              time.Time `gorm:"column:created_at"`
-	UpdatedAt              time.Time `gorm:"column:updated_at"`
+	IdempotencyKey             *string `gorm:"column:idempotency_key"`
+	IdempotencyRequestHash     *string `gorm:"column:idempotency_request_hash"`
+	CreatedAt                  time.Time `gorm:"column:created_at"`
+	UpdatedAt                  time.Time `gorm:"column:updated_at"`
 }
 
 func (movementRow) TableName() string { return "movements" }
@@ -79,8 +81,9 @@ func rowToMovement(m movementRow, lines []movementLineRow) Movement {
 		CreatedBy:              m.CreatedBy,
 		Status:                 m.Status,
 		Notes:                  m.Notes,
-		IdempotencyKey:         m.IdempotencyKey,
-		CreatedAt:              m.CreatedAt,
+		IdempotencyKey:             m.IdempotencyKey,
+		IdempotencyRequestHash:     m.IdempotencyRequestHash,
+		CreatedAt:                  m.CreatedAt,
 		UpdatedAt:              m.UpdatedAt,
 		Lines:                  make([]MovementLine, 0, len(lines)),
 	}

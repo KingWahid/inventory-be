@@ -26,16 +26,17 @@ func movementRepoToStub(m repository.Movement) (stub.Movement, error) {
 	}
 
 	out := stub.Movement{
-		Id:              openapi_types.UUID(id),
-		TenantId:        openapi_types.UUID(tid),
-		Type:            stub.MovementType(m.Type),
-		ReferenceNumber: m.ReferenceNumber,
-		CreatedBy:       openapi_types.UUID(creator),
-		Status:          stub.MovementStatus(m.Status),
-		CreatedAt:       m.CreatedAt,
-		UpdatedAt:       m.UpdatedAt,
-		Notes:           m.Notes,
-		IdempotencyKey:  m.IdempotencyKey,
+		Id:                     openapi_types.UUID(id),
+		TenantId:               openapi_types.UUID(tid),
+		Type:                   stub.MovementType(m.Type),
+		ReferenceNumber:        m.ReferenceNumber,
+		CreatedBy:              openapi_types.UUID(creator),
+		Status:                 stub.MovementStatus(m.Status),
+		CreatedAt:              m.CreatedAt,
+		UpdatedAt:              m.UpdatedAt,
+		Notes:                  m.Notes,
+		IdempotencyKey:         m.IdempotencyKey,
+		IdempotencyRequestHash: m.IdempotencyRequestHash,
 	}
 	out.SourceWarehouseId = uuidPtrFromStringOptional(m.SourceWarehouseID)
 	out.DestinationWarehouseId = uuidPtrFromStringOptional(m.DestinationWarehouseID)

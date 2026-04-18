@@ -23,12 +23,15 @@ type LineInput struct {
 	Notes     *string
 }
 
-// CreateMovementBase are shared optional fields for all create flows.
+// CreateMovementBase are shared fields for all movement create flows (POST).
+// IdempotencyKey is the HTTP Idempotency-Key header (required, §9).
+// RequestHashSHA256Hex is SHA-256 hex of the raw JSON body for replay detection.
 type CreateMovementBase struct {
-	ReferenceNumber string
-	Notes           *string
-	IdempotencyKey  *string
-	Lines           []LineInput
+	ReferenceNumber       string
+	Notes                 *string
+	Lines                 []LineInput
+	IdempotencyKey        string
+	RequestHashSHA256Hex  string
 }
 
 // Usecase defines movement application logic.
@@ -159,6 +162,9 @@ func (u *usecase) CreateAdjustment(ctx context.Context, sourceWarehouseID, destW
 }
 
 func (u *usecase) createDraft(ctx context.Context, tenantID, userID, typ string, in CreateMovementBase, src, dst *string) (movrepo.Movement, error) {
+	if err := validateIdempotencyCreate(in); err != nil {
+		return movrepo.Movement{}, err
+	}
 	if err := validateMovementWarehouses(typ, src, dst); err != nil {
 		return movrepo.Movement{}, err
 	}
@@ -202,15 +208,37 @@ func (u *usecase) createDraft(ctx context.Context, tenantID, userID, typ string,
 
 	return u.move.Create(ctx, movrepo.CreateMovementInput{
 		TenantID:               tenantID,
-		Type:                     typ,
-		ReferenceNumber:          ref,
+		Type:                   typ,
+		ReferenceNumber:        ref,
 		SourceWarehouseID:      src,
 		DestinationWarehouseID: dst,
 		CreatedBy:              userID,
 		Notes:                  trimNotes(in.Notes),
-		IdempotencyKey:         trimString(in.IdempotencyKey),
+		IdempotencyKey:         strings.TrimSpace(in.IdempotencyKey),
+		IdempotencyRequestHash: strings.TrimSpace(strings.ToLower(in.RequestHashSHA256Hex)),
 		Lines:                  lineIn,
 	})
+}
+
+func validateIdempotencyCreate(in CreateMovementBase) error {
+	key := strings.TrimSpace(in.IdempotencyKey)
+	if key == "" {
+		return errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "Idempotency-Key header is required"})
+	}
+	if len(key) > 255 {
+		return errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "Idempotency-Key exceeds 255 characters"})
+	}
+	hash := strings.TrimSpace(strings.ToLower(in.RequestHashSHA256Hex))
+	if len(hash) != 64 {
+		return errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "invalid request body fingerprint"})
+	}
+	for _, c := range hash {
+		if c >= '0' && c <= '9' || c >= 'a' && c <= 'f' {
+			continue
+		}
+		return errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "invalid request body fingerprint"})
+	}
+	return nil
 }
 
 func trimNotes(p *string) *string {

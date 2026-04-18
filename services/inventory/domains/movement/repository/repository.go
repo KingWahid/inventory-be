@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ type Repository interface {
 	Ping() error
 	UserBelongsToTenant(ctx context.Context, tenantID, userID string) (bool, error)
 	Create(ctx context.Context, in CreateMovementInput) (Movement, error)
+	GetByTenantAndIdempotencyKey(ctx context.Context, tenantID, idempotencyKey string) (Movement, error)
 	GetByID(ctx context.Context, tenantID, movementID string) (Movement, error)
 	GetByIDForUpdate(ctx context.Context, tenantID, movementID string) (Movement, error)
 	List(ctx context.Context, tenantID string, f ListFilter) ([]Movement, int64, error)
@@ -33,8 +35,9 @@ type CreateMovementInput struct {
 	DestinationWarehouseID *string
 	CreatedBy              string
 	Notes                  *string
-	IdempotencyKey         *string
-	Lines                  []MovementLineInput
+	IdempotencyKey           string // normalized non-empty when using §9 header flow
+	IdempotencyRequestHash   string // 64-char lowercase hex SHA-256 of raw JSON body
+	Lines                    []MovementLineInput
 }
 
 // MovementLineInput is one line for Create.
@@ -90,25 +93,35 @@ func (r *repository) Create(ctx context.Context, in CreateMovementInput) (Moveme
 	db := transaction.GetDB(ctx, r.db).WithContext(ctx)
 	mid := uuid.New().String()
 	now := time.Now().UTC()
+
+	keyTrim := strings.TrimSpace(in.IdempotencyKey)
+	hashTrim := strings.TrimSpace(strings.ToLower(in.IdempotencyRequestHash))
+	idemPtr := trimNonEmpty(keyTrim)
+	var hashPtr *string
+	if hashTrim != "" {
+		hashPtr = &hashTrim
+	}
+
 	m := movementRow{
-		ID:                     mid,
-		TenantID:               strings.TrimSpace(in.TenantID),
-		Type:                   in.Type,
-		ReferenceNumber:        strings.TrimSpace(in.ReferenceNumber),
+		ID:                       mid,
+		TenantID:                 strings.TrimSpace(in.TenantID),
+		Type:                     in.Type,
+		ReferenceNumber:          strings.TrimSpace(in.ReferenceNumber),
 		SourceWarehouseID:      trimStringPtr(in.SourceWarehouseID),
-		DestinationWarehouseID: trimStringPtr(in.DestinationWarehouseID),
-		CreatedBy:              strings.TrimSpace(in.CreatedBy),
-		Status:                 StatusDraft,
-		Notes:                  trimStringPtr(in.Notes),
-		IdempotencyKey:         trimStringPtr(in.IdempotencyKey),
-		CreatedAt:              now,
-		UpdatedAt:              now,
+		DestinationWarehouseID:   trimStringPtr(in.DestinationWarehouseID),
+		CreatedBy:                strings.TrimSpace(in.CreatedBy),
+		Status:                   StatusDraft,
+		Notes:                    trimStringPtr(in.Notes),
+		IdempotencyKey:           idemPtr,
+		IdempotencyRequestHash:    hashPtr,
+		CreatedAt:                now,
+		UpdatedAt:                now,
 	}
 	if err := db.Create(&m).Error; err != nil {
-		if isDuplicateErr(err) {
-			return Movement{}, errorcodes.ErrConflict.WithDetails(map[string]any{"message": "reference_number or idempotency_key already exists"})
+		if !isDuplicateErr(err) {
+			return Movement{}, err
 		}
-		return Movement{}, err
+		return r.handleCreateDuplicate(ctx, in, keyTrim, hashTrim)
 	}
 	for i := range in.Lines {
 		l := in.Lines[i]
@@ -125,6 +138,63 @@ func (r *repository) Create(ctx context.Context, in CreateMovementInput) (Moveme
 		}
 	}
 	return r.GetByID(ctx, in.TenantID, mid)
+}
+
+func (r *repository) GetByTenantAndIdempotencyKey(ctx context.Context, tenantID, idempotencyKey string) (Movement, error) {
+	tid := strings.TrimSpace(tenantID)
+	key := strings.TrimSpace(idempotencyKey)
+	if key == "" {
+		return Movement{}, errorcodes.ErrNotFound
+	}
+	db := transaction.GetDB(ctx, r.db).WithContext(ctx)
+	var row movementRow
+	err := db.Where("tenant_id = ? AND idempotency_key = ?", tid, key).First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return Movement{}, errorcodes.ErrNotFound
+		}
+		return Movement{}, err
+	}
+	return r.GetByID(ctx, tid, row.ID)
+}
+
+func (r *repository) handleCreateDuplicate(ctx context.Context, in CreateMovementInput, keyTrim, hashTrim string) (Movement, error) {
+	tid := strings.TrimSpace(in.TenantID)
+	if keyTrim != "" {
+		existing, err := r.GetByTenantAndIdempotencyKey(ctx, tid, keyTrim)
+		if err == nil {
+			if idempotencyHashesMatch(existing.IdempotencyRequestHash, hashTrim) {
+				return existing, nil
+			}
+			return Movement{}, errorcodes.ErrIdempotency
+		}
+		if !errors.Is(err, errorcodes.ErrNotFound) {
+			return Movement{}, err
+		}
+	}
+	return Movement{}, errorcodes.ErrConflict.WithDetails(map[string]any{"message": "reference_number already exists"})
+}
+
+func idempotencyHashesMatch(stored *string, want string) bool {
+	if len(want) != 64 {
+		return false
+	}
+	if stored == nil {
+		return false
+	}
+	got := strings.TrimSpace(strings.ToLower(*stored))
+	if len(got) != 64 {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
+}
+
+func trimNonEmpty(s string) *string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func (r *repository) GetByID(ctx context.Context, tenantID, movementID string) (Movement, error) {

@@ -1,11 +1,12 @@
 openapi: 3.0.3
 info:
   title: Inventory API
-  version: 0.7.0
+  version: 0.7.1
   description: |
     Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
     JSON errors:  via pkg/common/errorcodes. JSON success: via pkg/common/httpresponse (`success`, `data`, `meta.request_id`, list `meta.pagination`).
     Probes `/health`, `/ready`, `/api/v1/inventory/health` use `text/plain`, not §9 JSON.
+    POST `/api/v1/inventory/movements/{inbound|outbound|transfer|adjustment}` require header `Idempotency-Key` (ARCHITECTURE §9); replay with the same key and identical raw JSON body returns the existing draft movement.
 paths:
   /health:
     get:
@@ -472,6 +473,8 @@ paths:
       summary: Create draft inbound movement
       security:
         - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -500,6 +503,8 @@ paths:
       summary: Create draft outbound movement
       security:
         - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -528,6 +533,8 @@ paths:
       summary: Create draft transfer movement
       security:
         - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -557,6 +564,8 @@ paths:
       description: Set exactly one of source_warehouse_id (decrease) or destination_warehouse_id (increase).
       security:
         - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -658,6 +667,16 @@ components:
       schema:
         type: string
         format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        Client-supplied key for safe retries (ARCHITECTURE §9). Paired with a SHA-256 fingerprint of the raw JSON body on the server.
+        Sending the same key with the same raw body returns the existing draft (no duplicate rows). Same key with a different body yields 409 `IDEMPOTENCY_CONFLICT`.
+      schema:
+        type: string
+        maxLength: 255
     Page:
       name: page
       in: query
@@ -1134,6 +1153,11 @@ components:
         idempotency_key:
           type: string
           nullable: true
+        idempotency_request_hash:
+          type: string
+          description: Lowercase SHA-256 hex of the raw JSON body used at create time; null for legacy rows.
+          pattern: '^[0-9a-f]{64}$'
+          nullable: true
         lines:
           type: array
           items:
@@ -1168,8 +1192,6 @@ components:
         reference_number:
           type: string
         notes:
-          type: string
-        idempotency_key:
           type: string
         lines:
           type: array

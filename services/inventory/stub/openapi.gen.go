@@ -120,7 +120,6 @@ const (
 // AdjustmentMovementCreateRequest defines model for AdjustmentMovementCreateRequest.
 type AdjustmentMovementCreateRequest struct {
 	DestinationWarehouseId *openapi_types.UUID  `json:"destination_warehouse_id"`
-	IdempotencyKey         *string              `json:"idempotency_key,omitempty"`
 	Lines                  []MovementLineCreate `json:"lines"`
 	Notes                  *string              `json:"notes,omitempty"`
 	ReferenceNumber        string               `json:"reference_number"`
@@ -189,7 +188,6 @@ type ErrorResponse struct {
 // InboundMovementCreateRequest defines model for InboundMovementCreateRequest.
 type InboundMovementCreateRequest struct {
 	DestinationWarehouseId openapi_types.UUID   `json:"destination_warehouse_id"`
-	IdempotencyKey         *string              `json:"idempotency_key,omitempty"`
 	Lines                  []MovementLineCreate `json:"lines"`
 	Notes                  *string              `json:"notes,omitempty"`
 	ReferenceNumber        string               `json:"reference_number"`
@@ -202,6 +200,9 @@ type Movement struct {
 	DestinationWarehouseId *openapi_types.UUID `json:"destination_warehouse_id"`
 	Id                     openapi_types.UUID  `json:"id"`
 	IdempotencyKey         *string             `json:"idempotency_key"`
+
+	// IdempotencyRequestHash Lowercase SHA-256 hex of the raw JSON body used at create time; null for legacy rows.
+	IdempotencyRequestHash *string             `json:"idempotency_request_hash"`
 	Lines                  *[]MovementLine     `json:"lines,omitempty"`
 	Notes                  *string             `json:"notes"`
 	ReferenceNumber        string              `json:"reference_number"`
@@ -220,7 +221,6 @@ type MovementType string
 
 // MovementDraftFields defines model for MovementDraftFields.
 type MovementDraftFields struct {
-	IdempotencyKey  *string              `json:"idempotency_key,omitempty"`
 	Lines           []MovementLineCreate `json:"lines"`
 	Notes           *string              `json:"notes,omitempty"`
 	ReferenceNumber string               `json:"reference_number"`
@@ -269,7 +269,6 @@ type MovementSuccessEnvelopeSuccess bool
 
 // OutboundMovementCreateRequest defines model for OutboundMovementCreateRequest.
 type OutboundMovementCreateRequest struct {
-	IdempotencyKey    *string              `json:"idempotency_key,omitempty"`
 	Lines             []MovementLineCreate `json:"lines"`
 	Notes             *string              `json:"notes,omitempty"`
 	ReferenceNumber   string               `json:"reference_number"`
@@ -361,7 +360,6 @@ type SuccessMeta struct {
 // TransferMovementCreateRequest defines model for TransferMovementCreateRequest.
 type TransferMovementCreateRequest struct {
 	DestinationWarehouseId openapi_types.UUID   `json:"destination_warehouse_id"`
-	IdempotencyKey         *string              `json:"idempotency_key,omitempty"`
 	Lines                  []MovementLineCreate `json:"lines"`
 	Notes                  *string              `json:"notes,omitempty"`
 	ReferenceNumber        string               `json:"reference_number"`
@@ -423,6 +421,9 @@ type WarehouseUpdateRequest struct {
 
 // CategoryId defines model for CategoryId.
 type CategoryId = openapi_types.UUID
+
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = string
 
 // MovementId defines model for MovementId.
 type MovementId = openapi_types.UUID
@@ -494,6 +495,34 @@ type GetApiV1InventoryMovementsParamsStatus string
 
 // GetApiV1InventoryMovementsParamsOrder defines parameters for GetApiV1InventoryMovements.
 type GetApiV1InventoryMovementsParamsOrder string
+
+// PostApiV1InventoryMovementsAdjustmentParams defines parameters for PostApiV1InventoryMovementsAdjustment.
+type PostApiV1InventoryMovementsAdjustmentParams struct {
+	// IdempotencyKey Client-supplied key for safe retries (ARCHITECTURE §9). Paired with a SHA-256 fingerprint of the raw JSON body on the server.
+	// Sending the same key with the same raw body returns the existing draft (no duplicate rows). Same key with a different body yields 409 `IDEMPOTENCY_CONFLICT`.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// PostApiV1InventoryMovementsInboundParams defines parameters for PostApiV1InventoryMovementsInbound.
+type PostApiV1InventoryMovementsInboundParams struct {
+	// IdempotencyKey Client-supplied key for safe retries (ARCHITECTURE §9). Paired with a SHA-256 fingerprint of the raw JSON body on the server.
+	// Sending the same key with the same raw body returns the existing draft (no duplicate rows). Same key with a different body yields 409 `IDEMPOTENCY_CONFLICT`.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// PostApiV1InventoryMovementsOutboundParams defines parameters for PostApiV1InventoryMovementsOutbound.
+type PostApiV1InventoryMovementsOutboundParams struct {
+	// IdempotencyKey Client-supplied key for safe retries (ARCHITECTURE §9). Paired with a SHA-256 fingerprint of the raw JSON body on the server.
+	// Sending the same key with the same raw body returns the existing draft (no duplicate rows). Same key with a different body yields 409 `IDEMPOTENCY_CONFLICT`.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// PostApiV1InventoryMovementsTransferParams defines parameters for PostApiV1InventoryMovementsTransfer.
+type PostApiV1InventoryMovementsTransferParams struct {
+	// IdempotencyKey Client-supplied key for safe retries (ARCHITECTURE §9). Paired with a SHA-256 fingerprint of the raw JSON body on the server.
+	// Sending the same key with the same raw body returns the existing draft (no duplicate rows). Same key with a different body yields 409 `IDEMPOTENCY_CONFLICT`.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
 
 // GetApiV1InventoryProductsParams defines parameters for GetApiV1InventoryProducts.
 type GetApiV1InventoryProductsParams struct {
@@ -577,16 +606,16 @@ type ServerInterface interface {
 	GetApiV1InventoryMovements(ctx echo.Context, params GetApiV1InventoryMovementsParams) error
 	// Create draft adjustment movement
 	// (POST /api/v1/inventory/movements/adjustment)
-	PostApiV1InventoryMovementsAdjustment(ctx echo.Context) error
+	PostApiV1InventoryMovementsAdjustment(ctx echo.Context, params PostApiV1InventoryMovementsAdjustmentParams) error
 	// Create draft inbound movement
 	// (POST /api/v1/inventory/movements/inbound)
-	PostApiV1InventoryMovementsInbound(ctx echo.Context) error
+	PostApiV1InventoryMovementsInbound(ctx echo.Context, params PostApiV1InventoryMovementsInboundParams) error
 	// Create draft outbound movement
 	// (POST /api/v1/inventory/movements/outbound)
-	PostApiV1InventoryMovementsOutbound(ctx echo.Context) error
+	PostApiV1InventoryMovementsOutbound(ctx echo.Context, params PostApiV1InventoryMovementsOutboundParams) error
 	// Create draft transfer movement
 	// (POST /api/v1/inventory/movements/transfer)
-	PostApiV1InventoryMovementsTransfer(ctx echo.Context) error
+	PostApiV1InventoryMovementsTransfer(ctx echo.Context, params PostApiV1InventoryMovementsTransferParams) error
 	// Get movement with lines
 	// (GET /api/v1/inventory/movements/{movementId})
 	GetApiV1InventoryMovementsMovementId(ctx echo.Context, movementId MovementId) error
@@ -832,8 +861,30 @@ func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsAdjustment(ctx echo.
 
 	ctx.Set(JwtAuthScopes, []string{})
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostApiV1InventoryMovementsAdjustmentParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter Idempotency-Key is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostApiV1InventoryMovementsAdjustment(ctx)
+	err = w.Handler.PostApiV1InventoryMovementsAdjustment(ctx, params)
 	return err
 }
 
@@ -843,8 +894,30 @@ func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsInbound(ctx echo.Con
 
 	ctx.Set(JwtAuthScopes, []string{})
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostApiV1InventoryMovementsInboundParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter Idempotency-Key is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostApiV1InventoryMovementsInbound(ctx)
+	err = w.Handler.PostApiV1InventoryMovementsInbound(ctx, params)
 	return err
 }
 
@@ -854,8 +927,30 @@ func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsOutbound(ctx echo.Co
 
 	ctx.Set(JwtAuthScopes, []string{})
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostApiV1InventoryMovementsOutboundParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter Idempotency-Key is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostApiV1InventoryMovementsOutbound(ctx)
+	err = w.Handler.PostApiV1InventoryMovementsOutbound(ctx, params)
 	return err
 }
 
@@ -865,8 +960,30 @@ func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsTransfer(ctx echo.Co
 
 	ctx.Set(JwtAuthScopes, []string{})
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostApiV1InventoryMovementsTransferParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter Idempotency-Key is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostApiV1InventoryMovementsTransfer(ctx)
+	err = w.Handler.PostApiV1InventoryMovementsTransfer(ctx, params)
 	return err
 }
 

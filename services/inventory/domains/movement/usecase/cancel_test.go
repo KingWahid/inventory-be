@@ -27,6 +27,10 @@ func (s *stubMovRepo) Create(context.Context, movrepo.CreateMovementInput) (movr
 	return movrepo.Movement{}, errorcodes.ErrInternal
 }
 
+func (s *stubMovRepo) GetByTenantAndIdempotencyKey(context.Context, string, string) (movrepo.Movement, error) {
+	return movrepo.Movement{}, errorcodes.ErrNotFound
+}
+
 func (s *stubMovRepo) GetByID(context.Context, string, string) (movrepo.Movement, error) {
 	s.calls++
 	if s.calls == 1 {

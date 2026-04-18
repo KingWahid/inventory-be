@@ -1,12 +1,15 @@
 package api
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/KingWahid/inventory/backend/pkg/common/httpresponse"
+	"github.com/KingWahid/inventory/backend/pkg/idempotency"
 	movementuc "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/usecase"
 	"github.com/KingWahid/inventory/backend/services/inventory/stub"
 	"github.com/labstack/echo/v4"
@@ -62,6 +65,18 @@ func linesFromStub(lines []stub.MovementLineCreate) []movementuc.LineInput {
 		})
 	}
 	return out
+}
+
+func readBindRawBodyMovementHash(c echo.Context, dst any) (string, error) {
+	raw, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return "", err
+	}
+	c.Request().Body = io.NopCloser(bytes.NewReader(raw))
+	if err := c.Bind(dst); err != nil {
+		return "", err
+	}
+	return idempotency.SHA256Hex(raw), nil
 }
 
 // GetApiV1InventoryMovements handles GET /api/v1/inventory/movements.
@@ -124,18 +139,20 @@ func (h *ServerHandler) GetApiV1InventoryMovementsMovementId(c echo.Context, mov
 }
 
 // PostApiV1InventoryMovementsInbound handles POST /api/v1/inventory/movements/inbound.
-func (h *ServerHandler) PostApiV1InventoryMovementsInbound(c echo.Context) error {
+func (h *ServerHandler) PostApiV1InventoryMovementsInbound(c echo.Context, params stub.PostApiV1InventoryMovementsInboundParams) error {
 	ctx := c.Request().Context()
 	var body stub.InboundMovementCreateRequest
-	if err := c.Bind(&body); err != nil {
+	bodyHash, err := readBindRawBodyMovementHash(c, &body)
+	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	dest := uuid.UUID(body.DestinationWarehouseId).String()
 	m, err := h.svc.CreateInbound(ctx, dest, movementuc.CreateMovementBase{
-		ReferenceNumber: body.ReferenceNumber,
-		Notes:           body.Notes,
-		IdempotencyKey:  body.IdempotencyKey,
-		Lines:           linesFromStub(body.Lines),
+		ReferenceNumber:      body.ReferenceNumber,
+		Notes:                body.Notes,
+		IdempotencyKey:       string(params.IdempotencyKey),
+		RequestHashSHA256Hex: bodyHash,
+		Lines:                linesFromStub(body.Lines),
 	})
 	if err != nil {
 		return httpresponse.Fail(c, err)
@@ -148,18 +165,20 @@ func (h *ServerHandler) PostApiV1InventoryMovementsInbound(c echo.Context) error
 }
 
 // PostApiV1InventoryMovementsOutbound handles POST /api/v1/inventory/movements/outbound.
-func (h *ServerHandler) PostApiV1InventoryMovementsOutbound(c echo.Context) error {
+func (h *ServerHandler) PostApiV1InventoryMovementsOutbound(c echo.Context, params stub.PostApiV1InventoryMovementsOutboundParams) error {
 	ctx := c.Request().Context()
 	var body stub.OutboundMovementCreateRequest
-	if err := c.Bind(&body); err != nil {
+	bodyHash, err := readBindRawBodyMovementHash(c, &body)
+	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	src := uuid.UUID(body.SourceWarehouseId).String()
 	m, err := h.svc.CreateOutbound(ctx, src, movementuc.CreateMovementBase{
-		ReferenceNumber: body.ReferenceNumber,
-		Notes:           body.Notes,
-		IdempotencyKey:  body.IdempotencyKey,
-		Lines:           linesFromStub(body.Lines),
+		ReferenceNumber:      body.ReferenceNumber,
+		Notes:                body.Notes,
+		IdempotencyKey:       string(params.IdempotencyKey),
+		RequestHashSHA256Hex: bodyHash,
+		Lines:                linesFromStub(body.Lines),
 	})
 	if err != nil {
 		return httpresponse.Fail(c, err)
@@ -172,19 +191,21 @@ func (h *ServerHandler) PostApiV1InventoryMovementsOutbound(c echo.Context) erro
 }
 
 // PostApiV1InventoryMovementsTransfer handles POST /api/v1/inventory/movements/transfer.
-func (h *ServerHandler) PostApiV1InventoryMovementsTransfer(c echo.Context) error {
+func (h *ServerHandler) PostApiV1InventoryMovementsTransfer(c echo.Context, params stub.PostApiV1InventoryMovementsTransferParams) error {
 	ctx := c.Request().Context()
 	var body stub.TransferMovementCreateRequest
-	if err := c.Bind(&body); err != nil {
+	bodyHash, err := readBindRawBodyMovementHash(c, &body)
+	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	src := uuid.UUID(body.SourceWarehouseId).String()
 	dst := uuid.UUID(body.DestinationWarehouseId).String()
 	m, err := h.svc.CreateTransfer(ctx, src, dst, movementuc.CreateMovementBase{
-		ReferenceNumber: body.ReferenceNumber,
-		Notes:           body.Notes,
-		IdempotencyKey:  body.IdempotencyKey,
-		Lines:           linesFromStub(body.Lines),
+		ReferenceNumber:      body.ReferenceNumber,
+		Notes:                body.Notes,
+		IdempotencyKey:       string(params.IdempotencyKey),
+		RequestHashSHA256Hex: bodyHash,
+		Lines:                linesFromStub(body.Lines),
 	})
 	if err != nil {
 		return httpresponse.Fail(c, err)
@@ -197,17 +218,19 @@ func (h *ServerHandler) PostApiV1InventoryMovementsTransfer(c echo.Context) erro
 }
 
 // PostApiV1InventoryMovementsAdjustment handles POST /api/v1/inventory/movements/adjustment.
-func (h *ServerHandler) PostApiV1InventoryMovementsAdjustment(c echo.Context) error {
+func (h *ServerHandler) PostApiV1InventoryMovementsAdjustment(c echo.Context, params stub.PostApiV1InventoryMovementsAdjustmentParams) error {
 	ctx := c.Request().Context()
 	var body stub.AdjustmentMovementCreateRequest
-	if err := c.Bind(&body); err != nil {
+	bodyHash, err := readBindRawBodyMovementHash(c, &body)
+	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	m, err := h.svc.CreateAdjustment(ctx, uuidPtrToStringPtr(body.SourceWarehouseId), uuidPtrToStringPtr(body.DestinationWarehouseId), movementuc.CreateMovementBase{
-		ReferenceNumber: body.ReferenceNumber,
-		Notes:           body.Notes,
-		IdempotencyKey:  body.IdempotencyKey,
-		Lines:           linesFromStub(body.Lines),
+		ReferenceNumber:      body.ReferenceNumber,
+		Notes:                body.Notes,
+		IdempotencyKey:       string(params.IdempotencyKey),
+		RequestHashSHA256Hex: bodyHash,
+		Lines:                linesFromStub(body.Lines),
 	})
 	if err != nil {
 		return httpresponse.Fail(c, err)
