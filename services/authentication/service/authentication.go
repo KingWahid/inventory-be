@@ -103,9 +103,10 @@ func (s *AuthenticationService) Login(ctx context.Context, in LoginInput) (Login
 	}
 
 	ci := commonjwt.ClaimsInput{
-		Subject:  user.ID,
-		TenantID: user.TenantID,
-		Role:     user.Role,
+		Subject:     user.ID,
+		TenantID:    user.TenantID,
+		Role:        user.Role,
+		Permissions: commonjwt.PermissionsForRole(user.Role),
 	}
 	access, err := s.jwt.GenerateAccessToken(ci)
 	if err != nil {

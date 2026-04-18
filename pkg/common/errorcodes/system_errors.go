@@ -15,6 +15,9 @@ var (
 	ErrTxBegin    = errors.New("transaction: begin tx")
 	ErrTxCommit   = errors.New("transaction: commit tx")
 	ErrTxRollback = errors.New("transaction: rollback tx")
+
+	// ErrTenantContextMissing is returned when JWT claims (with tenant_id) are not on context.Context.
+	ErrTenantContextMissing = errors.New("auth: tenant context missing")
 )
 
 const (

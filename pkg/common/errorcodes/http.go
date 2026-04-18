@@ -93,6 +93,8 @@ func mapKnownSentinels(err error) (AppError, bool) {
 	case errors.Is(err, ErrJWTInvalidSubject),
 		errors.Is(err, ErrJWTInvalidTenantID):
 		return ErrValidationError, true
+	case errors.Is(err, ErrTenantContextMissing):
+		return ErrUnauthorized, true
 	case errors.Is(err, ErrJWTInvalidSecret),
 		errors.Is(err, ErrJWTInvalidTTL):
 		return ErrInternal, true

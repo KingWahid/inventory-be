@@ -399,36 +399,33 @@ Semua tabel domain memiliki kolom `tenant_id NOT NULL`. Satu database, satu sche
 
 ```mermaid
 flowchart LR
-  JWT["JWT: { tenant_id: uuid }"] --> Middleware[Tenant Middleware]
-  Middleware --> Context["ctx.Set('tenant_id', uuid)"]
-  Context --> Usecase
-  Usecase --> Repo["Repository: WHERE tenant_id = ?"]
+  JWT["JWT: tenant_id in claims"] --> Middleware["RequireBearerAccessJWT"]
+  Middleware --> ReqCtx["request.Context + Claims"]
+  ReqCtx --> TenantID["jwt.TenantIDFromContext"]
+  TenantID --> Usecase
+  Usecase --> Repo["base.TenantDB or WHERE tenant_id"]
   Repo --> DB[(PostgreSQL)]
 ```
 
 ### Implementation
 
+Sumber kebenaran tenant untuk usecase dan repository adalah **`context.Context`** yang dibawa request setelah JWT access token divalidasi (`pkg/common/jwt.RequireBearerAccessJWT` memanggil `ContextWithClaims`). Jangan mengandalkan `echo.Context` saja — gunakan `c.Request().Context()` atau helper:
+
 ```go
-// services/inventory/api/middleware/tenant.go — extract tenant_id from JWT claims
-func TenantMiddleware() echo.MiddlewareFunc {
-    return func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c echo.Context) error {
-            claims := c.Get("jwt_claims").(*JWTClaims)
-            c.Set("tenant_id", claims.TenantID)
-            return next(c)
-        }
-    }
+tid, err := jwt.TenantIDFromContext(ctx)
+if err != nil {
+    return err // errorcodes.ErrTenantContextMissing → 401 via ToHTTP
 }
 
-// repository — every query scoped
-func (r *productRepo) FindAll(ctx context.Context, tenantID uuid.UUID) ([]domain.Product, error) {
-    var products []domain.Product
-    err := r.db.WithContext(ctx).
-        Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
-        Find(&products).Error
-    return products, err
+// GORM: scope query (hindari tenant_id dari parameter handler / body)
+db, err := base.TenantDB(ctx, r.db.WithContext(ctx))
+if err != nil {
+    return err
 }
+err = db.Where("deleted_at IS NULL").Find(&products).Error
 ```
+
+Untuk RBAC: klaim JWT memuat `role` dan `permissions`; `jwt.HasPermission` / `jwt.RequirePermission` menganggap `admin`, `owner`, dan `super_admin` memiliki akses penuh dalam tenant; role lain mengikuti slice `permissions` yang diisi saat login.
 
 ### Tenant Table (global, not tenant-scoped)
 

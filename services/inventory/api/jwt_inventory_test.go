@@ -69,3 +69,41 @@ func TestInventoryJWT_ProtectedRequiresAccessToken(t *testing.T) {
 		t.Fatalf("body %+v", body)
 	}
 }
+
+func TestInventoryJWT_TenantIDFromContextOnProtectedRoute(t *testing.T) {
+	jwtSvc, err := commonjwt.NewService("inv-jwt-test-secret-string", time.Hour, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := echo.New()
+	e.HTTPErrorHandler = httpErrorHandler
+	e.Use(commonjwt.RequireBearerAccessJWT(jwtSvc, InventoryPublicPaths))
+	e.GET("/api/v1/inventory/categories", func(c echo.Context) error {
+		tid, terr := commonjwt.TenantIDFromContext(c.Request().Context())
+		if terr != nil {
+			return terr
+		}
+		return c.JSON(http.StatusOK, map[string]string{"tenant_id": tid})
+	})
+
+	tok, err := jwtSvc.GenerateAccessToken(commonjwt.ClaimsInput{
+		Subject: "user-x", TenantID: "tenant-z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inventory/categories", nil)
+	req.Header.Set(echo.HeaderAuthorization, "Bearer "+tok)
+	e.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200 got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["tenant_id"] != "tenant-z" {
+		t.Fatalf("body %+v", body)
+	}
+}

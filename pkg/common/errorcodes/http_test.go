@@ -29,6 +29,13 @@ func TestToHTTP_JWTParse(t *testing.T) {
 	}
 }
 
+func TestToHTTP_TenantContextMissing(t *testing.T) {
+	st, ae := ToHTTP(ErrTenantContextMissing)
+	if st != 401 || ae.Code != CodeUnauthorized {
+		t.Fatalf("want 401 unauthorized got %d %+v", st, ae)
+	}
+}
+
 func TestIsClassified(t *testing.T) {
 	if !IsClassified(ErrUnauthorized) {
 		t.Fatal("AppError should be classified")
