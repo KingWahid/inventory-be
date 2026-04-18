@@ -104,9 +104,43 @@ Menjadikan `services/inventory/openapi/openapi.yaml` dan `services/authenticatio
 
 **Acceptance criteria**
 
-- [ ] `make` / build seluruh modul lolos setelah codegen.
-- [ ] Spesifikasi versi dicatat; breaking change diawali versi atau path `/api/v1`.
-- [ ] Daftar endpoint terdokumentasi vs “belum diimplementasi” (tabel tracking di dokumen ini atau board).
+- [x] `make` / build seluruh modul lolos setelah codegen.
+- [x] Spesifikasi versi dicatat; breaking change diawali versi atau path `/api/v1` (`info.version` **0.2.0** untuk inventory + authentication).
+- [x] Daftar endpoint terdokumentasi vs “belum diimplementasi” (tabel tracking di dokumen ini atau board).
+
+**Tracking endpoint (phase 1 §9 — OpenAPI `info.version` 0.2.0)**
+
+| Service | Path | operationId | Status |
+|---------|------|-------------|--------|
+| authentication | `GET /health` | `getHealth` | implemented |
+| authentication | `GET /ready` | `getReady` | implemented |
+| authentication | `GET /api/v1/auth/health` | `getApiV1AuthHealth` | implemented |
+| authentication | `POST /api/v1/auth/login` | `postApiV1AuthLogin` | implemented |
+| authentication | `POST /api/v1/auth/register` | `postApiV1AuthRegister` | implemented |
+| authentication | `POST /api/v1/auth/refresh` | `postApiV1AuthRefresh` | 501 stub |
+| authentication | `POST /api/v1/auth/logout` | `postApiV1AuthLogout` | 501 stub |
+| authentication | `GET /api/v1/auth/me` | `getApiV1AuthMe` | 501 stub |
+| inventory | `GET /health` | `getHealth` | implemented |
+| inventory | `GET /ready` | `getReady` | implemented |
+| inventory | `GET /api/v1/inventory/health` | `getInventoryHealth` | implemented |
+| inventory | `GET /api/v1/inventory/categories` | `getApiV1InventoryCategories` | 501 stub |
+| inventory | `POST /api/v1/inventory/categories` | `postApiV1InventoryCategories` | 501 stub |
+| inventory | `GET /api/v1/inventory/categories/{categoryId}` | `getApiV1InventoryCategoriesCategoryId` | 501 stub |
+| inventory | `PUT /api/v1/inventory/categories/{categoryId}` | `putApiV1InventoryCategoriesCategoryId` | 501 stub |
+| inventory | `DELETE /api/v1/inventory/categories/{categoryId}` | `deleteApiV1InventoryCategoriesCategoryId` | 501 stub |
+| inventory | `GET /api/v1/inventory/products` | `getApiV1InventoryProducts` | 501 stub |
+| inventory | `POST /api/v1/inventory/products` | `postApiV1InventoryProducts` | 501 stub |
+| inventory | `GET /api/v1/inventory/products/{productId}` | `getApiV1InventoryProductsProductId` | 501 stub |
+| inventory | `PUT /api/v1/inventory/products/{productId}` | `putApiV1InventoryProductsProductId` | 501 stub |
+| inventory | `DELETE /api/v1/inventory/products/{productId}` | `deleteApiV1InventoryProductsProductId` | 501 stub |
+| inventory | `POST /api/v1/inventory/products/{productId}/restore` | `postApiV1InventoryProductsProductIdRestore` | 501 stub |
+| inventory | `GET /api/v1/inventory/warehouses` | `getApiV1InventoryWarehouses` | 501 stub |
+| inventory | `POST /api/v1/inventory/warehouses` | `postApiV1InventoryWarehouses` | 501 stub |
+| inventory | `GET /api/v1/inventory/warehouses/{warehouseId}` | `getApiV1InventoryWarehousesWarehouseId` | 501 stub |
+| inventory | `PUT /api/v1/inventory/warehouses/{warehouseId}` | `putApiV1InventoryWarehousesWarehouseId` | 501 stub |
+| inventory | `DELETE /api/v1/inventory/warehouses/{warehouseId}` | `deleteApiV1InventoryWarehousesWarehouseId` | 501 stub |
+
+Catatan: envelope respons penuh §9 (`success`/`data`/`meta`) ditunda ke tugas **2.3**; login/register tetap respons flat seperti sebelumnya.
 
 **Rujukan**  
 ARCHITECTURE §9; [docs/service/how-to-structure-openapi.md](docs/service/how-to-structure-openapi.md).

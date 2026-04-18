@@ -1,7 +1,10 @@
 openapi: 3.0.3
 info:
   title: Inventory API
-  version: 0.1.0
+  version: 0.2.0
+  description: |
+    Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
+    Full §9 response envelope alignment is deferred (BACKEND_TASKS 2.3).
 paths:
   /health:
     get:
@@ -42,7 +45,460 @@ paths:
             text/plain:
               schema:
                 $ref: "#/components/schemas/PlainTextOk"
+  /api/v1/inventory/categories:
+    get:
+      operationId: getApiV1InventoryCategories
+      tags: [categories]
+      summary: List categories
+      security:
+        - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/Sort"
+        - $ref: "#/components/parameters/Order"
+      responses:
+        "200":
+          description: Paginated categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    post:
+      operationId: postApiV1InventoryCategories
+      tags: [categories]
+      summary: Create category
+      security:
+        - JwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+  /api/v1/inventory/categories/{categoryId}:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      operationId: getApiV1InventoryCategoriesCategoryId
+      tags: [categories]
+      summary: Get category by ID
+      security:
+        - JwtAuth: []
+      responses:
+        "200":
+          description: Category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    put:
+      operationId: putApiV1InventoryCategoriesCategoryId
+      tags: [categories]
+      summary: Update category
+      security:
+        - JwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryUpdateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    delete:
+      operationId: deleteApiV1InventoryCategoriesCategoryId
+      tags: [categories]
+      summary: Delete category (soft delete when applicable)
+      security:
+        - JwtAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+  /api/v1/inventory/products:
+    get:
+      operationId: getApiV1InventoryProducts
+      tags: [products]
+      summary: List products
+      security:
+        - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/Sort"
+        - $ref: "#/components/parameters/Order"
+        - name: category_id
+          in: query
+          description: Filter by category UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Paginated products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    post:
+      operationId: postApiV1InventoryProducts
+      tags: [products]
+      summary: Create product
+      security:
+        - JwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+  /api/v1/inventory/products/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    get:
+      operationId: getApiV1InventoryProductsProductId
+      tags: [products]
+      summary: Get product by ID
+      security:
+        - JwtAuth: []
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    put:
+      operationId: putApiV1InventoryProductsProductId
+      tags: [products]
+      summary: Update product
+      security:
+        - JwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    delete:
+      operationId: deleteApiV1InventoryProductsProductId
+      tags: [products]
+      summary: Delete product (soft delete)
+      security:
+        - JwtAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+  /api/v1/inventory/products/{productId}/restore:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    post:
+      operationId: postApiV1InventoryProductsProductIdRestore
+      tags: [products]
+      summary: Restore soft-deleted product
+      security:
+        - JwtAuth: []
+      responses:
+        "200":
+          description: Restored product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+  /api/v1/inventory/warehouses:
+    get:
+      operationId: getApiV1InventoryWarehouses
+      tags: [warehouses]
+      summary: List warehouses
+      security:
+        - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/Sort"
+        - $ref: "#/components/parameters/Order"
+      responses:
+        "200":
+          description: Paginated warehouses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    post:
+      operationId: postApiV1InventoryWarehouses
+      tags: [warehouses]
+      summary: Create warehouse
+      security:
+        - JwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WarehouseCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Warehouse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+  /api/v1/inventory/warehouses/{warehouseId}:
+    parameters:
+      - $ref: "#/components/parameters/WarehouseId"
+    get:
+      operationId: getApiV1InventoryWarehousesWarehouseId
+      tags: [warehouses]
+      summary: Get warehouse by ID
+      security:
+        - JwtAuth: []
+      responses:
+        "200":
+          description: Warehouse
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Warehouse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    put:
+      operationId: putApiV1InventoryWarehousesWarehouseId
+      tags: [warehouses]
+      summary: Update warehouse
+      security:
+        - JwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WarehouseUpdateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Warehouse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
+    delete:
+      operationId: deleteApiV1InventoryWarehousesWarehouseId
+      tags: [warehouses]
+      summary: Delete warehouse
+      security:
+        - JwtAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "501":
+          $ref: "#/components/responses/NotImplementedError"
 components:
+  securitySchemes:
+    JwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token JWT; tenant scope from claims.
+  parameters:
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WarehouseId:
+      name: warehouseId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PerPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Search:
+      name: search
+      in: query
+      schema:
+        type: string
+    Sort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        description: Field name to sort by (domain-specific)
+    Order:
+      name: order
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+  responses:
+    UnauthorizedError:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadRequestError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotImplementedError:
+      description: Endpoint not implemented yet
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     PlainTextOk:
       type: string
@@ -56,3 +512,263 @@ components:
         error:
           type: string
           description: Machine-readable error message
+    PaginationMeta:
+      type: object
+      required:
+        - page
+        - per_page
+        - total
+        - total_pages
+      properties:
+        page:
+          type: integer
+          format: int32
+        per_page:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
+        total_pages:
+          type: integer
+          format: int32
+    Category:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        sort_order:
+          type: integer
+          format: int32
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+    CategoryCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        sort_order:
+          type: integer
+          format: int32
+    CategoryUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        sort_order:
+          type: integer
+          format: int32
+    CategoryListResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+    Product:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - sku
+        - name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        sku:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        unit:
+          type: string
+        price:
+          type: number
+          format: double
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+    ProductCreateRequest:
+      type: object
+      required:
+        - sku
+        - name
+      properties:
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        sku:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        unit:
+          type: string
+        price:
+          type: number
+          format: double
+    ProductUpdateRequest:
+      type: object
+      properties:
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        sku:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        unit:
+          type: string
+        price:
+          type: number
+          format: double
+    ProductListResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+    Warehouse:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+    WarehouseCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        is_active:
+          type: boolean
+          default: true
+    WarehouseUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        is_active:
+          type: boolean
+    WarehouseListResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Warehouse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"

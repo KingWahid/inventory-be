@@ -1,7 +1,10 @@
 openapi: 3.0.3
 info:
   title: Authentication Service API
-  version: 0.1.0
+  version: 0.2.0
+  description: |
+    Tenant scope is derived from the JWT (`tenant_id` claim), not from `X-Tenant-Id`.
+    Full ARCHITECTURE §9 response envelope (`success`/`data`/`meta`) is tracked separately (BACKEND_TASKS 2.3).
 servers:
   - url: /
 paths:
@@ -77,6 +80,88 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/refresh:
+    post:
+      operationId: postApiV1AuthRefresh
+      tags: [auth]
+      summary: Refresh access token
+      description: Placeholder until refresh-token storage is implemented (BACKEND_TASKS 3.1).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        "200":
+          description: New tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "501":
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/logout:
+    post:
+      operationId: postApiV1AuthLogout
+      tags: [auth]
+      summary: Log out (invalidate refresh session)
+      description: Requires Bearer JWT. Implementation pending (BACKEND_TASKS 3.1).
+      security:
+        - JwtAuth: []
+      responses:
+        "204":
+          description: Logged out
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "501":
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/me:
+    get:
+      operationId: getApiV1AuthMe
+      tags: [auth]
+      summary: Current user profile
+      description: Requires Bearer JWT (`sub` = user id).
+      security:
+        - JwtAuth: []
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "501":
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /health:
     get:
       operationId: getHealth
@@ -121,7 +206,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/PlainTextOk'
 components:
+  securitySchemes:
+    JwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token JWT; includes tenant_id claim.
   schemas:
+    RefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh token (opaque or JWT per product decision)
+    RefreshResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          format: int64
+    MeResponse:
+      type: object
+      required:
+        - user_id
+        - tenant_id
+        - email
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+          description: May be empty if not set
     ErrorResponse:
       type: object
       required:

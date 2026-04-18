@@ -4,8 +4,77 @@
 package stub
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+const (
+	JwtAuthScopes = "JwtAuth.Scopes"
+)
+
+// Defines values for Order.
+const (
+	OrderAsc  Order = "asc"
+	OrderDesc Order = "desc"
+)
+
+// Defines values for GetApiV1InventoryCategoriesParamsOrder.
+const (
+	GetApiV1InventoryCategoriesParamsOrderAsc  GetApiV1InventoryCategoriesParamsOrder = "asc"
+	GetApiV1InventoryCategoriesParamsOrderDesc GetApiV1InventoryCategoriesParamsOrder = "desc"
+)
+
+// Defines values for GetApiV1InventoryProductsParamsOrder.
+const (
+	GetApiV1InventoryProductsParamsOrderAsc  GetApiV1InventoryProductsParamsOrder = "asc"
+	GetApiV1InventoryProductsParamsOrderDesc GetApiV1InventoryProductsParamsOrder = "desc"
+)
+
+// Defines values for GetApiV1InventoryWarehousesParamsOrder.
+const (
+	GetApiV1InventoryWarehousesParamsOrderAsc  GetApiV1InventoryWarehousesParamsOrder = "asc"
+	GetApiV1InventoryWarehousesParamsOrderDesc GetApiV1InventoryWarehousesParamsOrder = "desc"
+)
+
+// Category defines model for Category.
+type Category struct {
+	CreatedAt   time.Time           `json:"created_at"`
+	DeletedAt   *time.Time          `json:"deleted_at"`
+	Description *string             `json:"description,omitempty"`
+	Id          openapi_types.UUID  `json:"id"`
+	Name        string              `json:"name"`
+	ParentId    *openapi_types.UUID `json:"parent_id"`
+	SortOrder   *int32              `json:"sort_order,omitempty"`
+	TenantId    openapi_types.UUID  `json:"tenant_id"`
+	UpdatedAt   time.Time           `json:"updated_at"`
+}
+
+// CategoryCreateRequest defines model for CategoryCreateRequest.
+type CategoryCreateRequest struct {
+	Description *string             `json:"description,omitempty"`
+	Name        string              `json:"name"`
+	ParentId    *openapi_types.UUID `json:"parent_id"`
+	SortOrder   *int32              `json:"sort_order,omitempty"`
+}
+
+// CategoryListResponse defines model for CategoryListResponse.
+type CategoryListResponse struct {
+	Data []Category     `json:"data"`
+	Meta PaginationMeta `json:"meta"`
+}
+
+// CategoryUpdateRequest defines model for CategoryUpdateRequest.
+type CategoryUpdateRequest struct {
+	Description *string             `json:"description,omitempty"`
+	Name        *string             `json:"name,omitempty"`
+	ParentId    *openapi_types.UUID `json:"parent_id"`
+	SortOrder   *int32              `json:"sort_order,omitempty"`
+}
 
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
@@ -13,14 +82,239 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+// PaginationMeta defines model for PaginationMeta.
+type PaginationMeta struct {
+	Page       int32 `json:"page"`
+	PerPage    int32 `json:"per_page"`
+	Total      int64 `json:"total"`
+	TotalPages int32 `json:"total_pages"`
+}
+
 // PlainTextOk Plain-text OK marker for probes
 type PlainTextOk = string
 
+// Product defines model for Product.
+type Product struct {
+	CategoryId  *openapi_types.UUID `json:"category_id"`
+	CreatedAt   time.Time           `json:"created_at"`
+	DeletedAt   *time.Time          `json:"deleted_at"`
+	Description *string             `json:"description,omitempty"`
+	Id          openapi_types.UUID  `json:"id"`
+	Name        string              `json:"name"`
+	Price       *float64            `json:"price,omitempty"`
+	Sku         string              `json:"sku"`
+	TenantId    openapi_types.UUID  `json:"tenant_id"`
+	Unit        *string             `json:"unit,omitempty"`
+	UpdatedAt   time.Time           `json:"updated_at"`
+}
+
+// ProductCreateRequest defines model for ProductCreateRequest.
+type ProductCreateRequest struct {
+	CategoryId  *openapi_types.UUID `json:"category_id"`
+	Description *string             `json:"description,omitempty"`
+	Name        string              `json:"name"`
+	Price       *float64            `json:"price,omitempty"`
+	Sku         string              `json:"sku"`
+	Unit        *string             `json:"unit,omitempty"`
+}
+
+// ProductListResponse defines model for ProductListResponse.
+type ProductListResponse struct {
+	Data []Product      `json:"data"`
+	Meta PaginationMeta `json:"meta"`
+}
+
+// ProductUpdateRequest defines model for ProductUpdateRequest.
+type ProductUpdateRequest struct {
+	CategoryId  *openapi_types.UUID `json:"category_id"`
+	Description *string             `json:"description,omitempty"`
+	Name        *string             `json:"name,omitempty"`
+	Price       *float64            `json:"price,omitempty"`
+	Sku         *string             `json:"sku,omitempty"`
+	Unit        *string             `json:"unit,omitempty"`
+}
+
+// Warehouse defines model for Warehouse.
+type Warehouse struct {
+	Address   *string            `json:"address,omitempty"`
+	Code      *string            `json:"code,omitempty"`
+	CreatedAt time.Time          `json:"created_at"`
+	DeletedAt *time.Time         `json:"deleted_at"`
+	Id        openapi_types.UUID `json:"id"`
+	IsActive  *bool              `json:"is_active,omitempty"`
+	Name      string             `json:"name"`
+	TenantId  openapi_types.UUID `json:"tenant_id"`
+	UpdatedAt time.Time          `json:"updated_at"`
+}
+
+// WarehouseCreateRequest defines model for WarehouseCreateRequest.
+type WarehouseCreateRequest struct {
+	Address  *string `json:"address,omitempty"`
+	Code     *string `json:"code,omitempty"`
+	IsActive *bool   `json:"is_active,omitempty"`
+	Name     string  `json:"name"`
+}
+
+// WarehouseListResponse defines model for WarehouseListResponse.
+type WarehouseListResponse struct {
+	Data []Warehouse    `json:"data"`
+	Meta PaginationMeta `json:"meta"`
+}
+
+// WarehouseUpdateRequest defines model for WarehouseUpdateRequest.
+type WarehouseUpdateRequest struct {
+	Address  *string `json:"address,omitempty"`
+	Code     *string `json:"code,omitempty"`
+	IsActive *bool   `json:"is_active,omitempty"`
+	Name     *string `json:"name,omitempty"`
+}
+
+// CategoryId defines model for CategoryId.
+type CategoryId = openapi_types.UUID
+
+// Order defines model for Order.
+type Order string
+
+// Page defines model for Page.
+type Page = int
+
+// PerPage defines model for PerPage.
+type PerPage = int
+
+// ProductId defines model for ProductId.
+type ProductId = openapi_types.UUID
+
+// Search defines model for Search.
+type Search = string
+
+// Sort Field name to sort by (domain-specific)
+type Sort = string
+
+// WarehouseId defines model for WarehouseId.
+type WarehouseId = openapi_types.UUID
+
+// BadRequestError defines model for BadRequestError.
+type BadRequestError = ErrorResponse
+
+// NotFoundError defines model for NotFoundError.
+type NotFoundError = ErrorResponse
+
+// NotImplementedError defines model for NotImplementedError.
+type NotImplementedError = ErrorResponse
+
+// UnauthorizedError defines model for UnauthorizedError.
+type UnauthorizedError = ErrorResponse
+
+// GetApiV1InventoryCategoriesParams defines parameters for GetApiV1InventoryCategories.
+type GetApiV1InventoryCategoriesParams struct {
+	Page    *Page                                   `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPage                                `form:"per_page,omitempty" json:"per_page,omitempty"`
+	Search  *Search                                 `form:"search,omitempty" json:"search,omitempty"`
+	Sort    *Sort                                   `form:"sort,omitempty" json:"sort,omitempty"`
+	Order   *GetApiV1InventoryCategoriesParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+}
+
+// GetApiV1InventoryCategoriesParamsOrder defines parameters for GetApiV1InventoryCategories.
+type GetApiV1InventoryCategoriesParamsOrder string
+
+// GetApiV1InventoryProductsParams defines parameters for GetApiV1InventoryProducts.
+type GetApiV1InventoryProductsParams struct {
+	Page    *Page                                 `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPage                              `form:"per_page,omitempty" json:"per_page,omitempty"`
+	Search  *Search                               `form:"search,omitempty" json:"search,omitempty"`
+	Sort    *Sort                                 `form:"sort,omitempty" json:"sort,omitempty"`
+	Order   *GetApiV1InventoryProductsParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+
+	// CategoryId Filter by category UUID
+	CategoryId *openapi_types.UUID `form:"category_id,omitempty" json:"category_id,omitempty"`
+}
+
+// GetApiV1InventoryProductsParamsOrder defines parameters for GetApiV1InventoryProducts.
+type GetApiV1InventoryProductsParamsOrder string
+
+// GetApiV1InventoryWarehousesParams defines parameters for GetApiV1InventoryWarehouses.
+type GetApiV1InventoryWarehousesParams struct {
+	Page    *Page                                   `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPage                                `form:"per_page,omitempty" json:"per_page,omitempty"`
+	Search  *Search                                 `form:"search,omitempty" json:"search,omitempty"`
+	Sort    *Sort                                   `form:"sort,omitempty" json:"sort,omitempty"`
+	Order   *GetApiV1InventoryWarehousesParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+}
+
+// GetApiV1InventoryWarehousesParamsOrder defines parameters for GetApiV1InventoryWarehouses.
+type GetApiV1InventoryWarehousesParamsOrder string
+
+// PostApiV1InventoryCategoriesJSONRequestBody defines body for PostApiV1InventoryCategories for application/json ContentType.
+type PostApiV1InventoryCategoriesJSONRequestBody = CategoryCreateRequest
+
+// PutApiV1InventoryCategoriesCategoryIdJSONRequestBody defines body for PutApiV1InventoryCategoriesCategoryId for application/json ContentType.
+type PutApiV1InventoryCategoriesCategoryIdJSONRequestBody = CategoryUpdateRequest
+
+// PostApiV1InventoryProductsJSONRequestBody defines body for PostApiV1InventoryProducts for application/json ContentType.
+type PostApiV1InventoryProductsJSONRequestBody = ProductCreateRequest
+
+// PutApiV1InventoryProductsProductIdJSONRequestBody defines body for PutApiV1InventoryProductsProductId for application/json ContentType.
+type PutApiV1InventoryProductsProductIdJSONRequestBody = ProductUpdateRequest
+
+// PostApiV1InventoryWarehousesJSONRequestBody defines body for PostApiV1InventoryWarehouses for application/json ContentType.
+type PostApiV1InventoryWarehousesJSONRequestBody = WarehouseCreateRequest
+
+// PutApiV1InventoryWarehousesWarehouseIdJSONRequestBody defines body for PutApiV1InventoryWarehousesWarehouseId for application/json ContentType.
+type PutApiV1InventoryWarehousesWarehouseIdJSONRequestBody = WarehouseUpdateRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// List categories
+	// (GET /api/v1/inventory/categories)
+	GetApiV1InventoryCategories(ctx echo.Context, params GetApiV1InventoryCategoriesParams) error
+	// Create category
+	// (POST /api/v1/inventory/categories)
+	PostApiV1InventoryCategories(ctx echo.Context) error
+	// Delete category (soft delete when applicable)
+	// (DELETE /api/v1/inventory/categories/{categoryId})
+	DeleteApiV1InventoryCategoriesCategoryId(ctx echo.Context, categoryId CategoryId) error
+	// Get category by ID
+	// (GET /api/v1/inventory/categories/{categoryId})
+	GetApiV1InventoryCategoriesCategoryId(ctx echo.Context, categoryId CategoryId) error
+	// Update category
+	// (PUT /api/v1/inventory/categories/{categoryId})
+	PutApiV1InventoryCategoriesCategoryId(ctx echo.Context, categoryId CategoryId) error
 	// Inventory service liveness under API prefix
 	// (GET /api/v1/inventory/health)
 	GetInventoryHealth(ctx echo.Context) error
+	// List products
+	// (GET /api/v1/inventory/products)
+	GetApiV1InventoryProducts(ctx echo.Context, params GetApiV1InventoryProductsParams) error
+	// Create product
+	// (POST /api/v1/inventory/products)
+	PostApiV1InventoryProducts(ctx echo.Context) error
+	// Delete product (soft delete)
+	// (DELETE /api/v1/inventory/products/{productId})
+	DeleteApiV1InventoryProductsProductId(ctx echo.Context, productId ProductId) error
+	// Get product by ID
+	// (GET /api/v1/inventory/products/{productId})
+	GetApiV1InventoryProductsProductId(ctx echo.Context, productId ProductId) error
+	// Update product
+	// (PUT /api/v1/inventory/products/{productId})
+	PutApiV1InventoryProductsProductId(ctx echo.Context, productId ProductId) error
+	// Restore soft-deleted product
+	// (POST /api/v1/inventory/products/{productId}/restore)
+	PostApiV1InventoryProductsProductIdRestore(ctx echo.Context, productId ProductId) error
+	// List warehouses
+	// (GET /api/v1/inventory/warehouses)
+	GetApiV1InventoryWarehouses(ctx echo.Context, params GetApiV1InventoryWarehousesParams) error
+	// Create warehouse
+	// (POST /api/v1/inventory/warehouses)
+	PostApiV1InventoryWarehouses(ctx echo.Context) error
+	// Delete warehouse
+	// (DELETE /api/v1/inventory/warehouses/{warehouseId})
+	DeleteApiV1InventoryWarehousesWarehouseId(ctx echo.Context, warehouseId WarehouseId) error
+	// Get warehouse by ID
+	// (GET /api/v1/inventory/warehouses/{warehouseId})
+	GetApiV1InventoryWarehousesWarehouseId(ctx echo.Context, warehouseId WarehouseId) error
+	// Update warehouse
+	// (PUT /api/v1/inventory/warehouses/{warehouseId})
+	PutApiV1InventoryWarehousesWarehouseId(ctx echo.Context, warehouseId WarehouseId) error
 	// Liveness probe
 	// (GET /health)
 	GetHealth(ctx echo.Context) error
@@ -34,12 +328,376 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
+// GetApiV1InventoryCategories converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryCategories(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetApiV1InventoryCategoriesParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "per_page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "per_page", ctx.QueryParams(), &params.PerPage)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter per_page: %s", err))
+	}
+
+	// ------------- Optional query parameter "search" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "search", ctx.QueryParams(), &params.Search)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter search: %s", err))
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sort", ctx.QueryParams(), &params.Sort)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sort: %s", err))
+	}
+
+	// ------------- Optional query parameter "order" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "order", ctx.QueryParams(), &params.Order)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter order: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryCategories(ctx, params)
+	return err
+}
+
+// PostApiV1InventoryCategories converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryCategories(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryCategories(ctx)
+	return err
+}
+
+// DeleteApiV1InventoryCategoriesCategoryId converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteApiV1InventoryCategoriesCategoryId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "categoryId" -------------
+	var categoryId CategoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "categoryId", ctx.Param("categoryId"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter categoryId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteApiV1InventoryCategoriesCategoryId(ctx, categoryId)
+	return err
+}
+
+// GetApiV1InventoryCategoriesCategoryId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryCategoriesCategoryId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "categoryId" -------------
+	var categoryId CategoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "categoryId", ctx.Param("categoryId"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter categoryId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryCategoriesCategoryId(ctx, categoryId)
+	return err
+}
+
+// PutApiV1InventoryCategoriesCategoryId converts echo context to params.
+func (w *ServerInterfaceWrapper) PutApiV1InventoryCategoriesCategoryId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "categoryId" -------------
+	var categoryId CategoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "categoryId", ctx.Param("categoryId"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter categoryId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PutApiV1InventoryCategoriesCategoryId(ctx, categoryId)
+	return err
+}
+
 // GetInventoryHealth converts echo context to params.
 func (w *ServerInterfaceWrapper) GetInventoryHealth(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetInventoryHealth(ctx)
+	return err
+}
+
+// GetApiV1InventoryProducts converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryProducts(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetApiV1InventoryProductsParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "per_page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "per_page", ctx.QueryParams(), &params.PerPage)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter per_page: %s", err))
+	}
+
+	// ------------- Optional query parameter "search" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "search", ctx.QueryParams(), &params.Search)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter search: %s", err))
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sort", ctx.QueryParams(), &params.Sort)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sort: %s", err))
+	}
+
+	// ------------- Optional query parameter "order" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "order", ctx.QueryParams(), &params.Order)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter order: %s", err))
+	}
+
+	// ------------- Optional query parameter "category_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "category_id", ctx.QueryParams(), &params.CategoryId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter category_id: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryProducts(ctx, params)
+	return err
+}
+
+// PostApiV1InventoryProducts converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryProducts(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryProducts(ctx)
+	return err
+}
+
+// DeleteApiV1InventoryProductsProductId converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteApiV1InventoryProductsProductId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteApiV1InventoryProductsProductId(ctx, productId)
+	return err
+}
+
+// GetApiV1InventoryProductsProductId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryProductsProductId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryProductsProductId(ctx, productId)
+	return err
+}
+
+// PutApiV1InventoryProductsProductId converts echo context to params.
+func (w *ServerInterfaceWrapper) PutApiV1InventoryProductsProductId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PutApiV1InventoryProductsProductId(ctx, productId)
+	return err
+}
+
+// PostApiV1InventoryProductsProductIdRestore converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryProductsProductIdRestore(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryProductsProductIdRestore(ctx, productId)
+	return err
+}
+
+// GetApiV1InventoryWarehouses converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryWarehouses(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetApiV1InventoryWarehousesParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "per_page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "per_page", ctx.QueryParams(), &params.PerPage)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter per_page: %s", err))
+	}
+
+	// ------------- Optional query parameter "search" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "search", ctx.QueryParams(), &params.Search)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter search: %s", err))
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sort", ctx.QueryParams(), &params.Sort)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sort: %s", err))
+	}
+
+	// ------------- Optional query parameter "order" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "order", ctx.QueryParams(), &params.Order)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter order: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryWarehouses(ctx, params)
+	return err
+}
+
+// PostApiV1InventoryWarehouses converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryWarehouses(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryWarehouses(ctx)
+	return err
+}
+
+// DeleteApiV1InventoryWarehousesWarehouseId converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteApiV1InventoryWarehousesWarehouseId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "warehouseId" -------------
+	var warehouseId WarehouseId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "warehouseId", ctx.Param("warehouseId"), &warehouseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter warehouseId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteApiV1InventoryWarehousesWarehouseId(ctx, warehouseId)
+	return err
+}
+
+// GetApiV1InventoryWarehousesWarehouseId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryWarehousesWarehouseId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "warehouseId" -------------
+	var warehouseId WarehouseId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "warehouseId", ctx.Param("warehouseId"), &warehouseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter warehouseId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryWarehousesWarehouseId(ctx, warehouseId)
+	return err
+}
+
+// PutApiV1InventoryWarehousesWarehouseId converts echo context to params.
+func (w *ServerInterfaceWrapper) PutApiV1InventoryWarehousesWarehouseId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "warehouseId" -------------
+	var warehouseId WarehouseId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "warehouseId", ctx.Param("warehouseId"), &warehouseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter warehouseId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PutApiV1InventoryWarehousesWarehouseId(ctx, warehouseId)
 	return err
 }
 
@@ -89,7 +747,23 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/api/v1/inventory/categories", wrapper.GetApiV1InventoryCategories)
+	router.POST(baseURL+"/api/v1/inventory/categories", wrapper.PostApiV1InventoryCategories)
+	router.DELETE(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.DeleteApiV1InventoryCategoriesCategoryId)
+	router.GET(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.GetApiV1InventoryCategoriesCategoryId)
+	router.PUT(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.PutApiV1InventoryCategoriesCategoryId)
 	router.GET(baseURL+"/api/v1/inventory/health", wrapper.GetInventoryHealth)
+	router.GET(baseURL+"/api/v1/inventory/products", wrapper.GetApiV1InventoryProducts)
+	router.POST(baseURL+"/api/v1/inventory/products", wrapper.PostApiV1InventoryProducts)
+	router.DELETE(baseURL+"/api/v1/inventory/products/:productId", wrapper.DeleteApiV1InventoryProductsProductId)
+	router.GET(baseURL+"/api/v1/inventory/products/:productId", wrapper.GetApiV1InventoryProductsProductId)
+	router.PUT(baseURL+"/api/v1/inventory/products/:productId", wrapper.PutApiV1InventoryProductsProductId)
+	router.POST(baseURL+"/api/v1/inventory/products/:productId/restore", wrapper.PostApiV1InventoryProductsProductIdRestore)
+	router.GET(baseURL+"/api/v1/inventory/warehouses", wrapper.GetApiV1InventoryWarehouses)
+	router.POST(baseURL+"/api/v1/inventory/warehouses", wrapper.PostApiV1InventoryWarehouses)
+	router.DELETE(baseURL+"/api/v1/inventory/warehouses/:warehouseId", wrapper.DeleteApiV1InventoryWarehousesWarehouseId)
+	router.GET(baseURL+"/api/v1/inventory/warehouses/:warehouseId", wrapper.GetApiV1InventoryWarehousesWarehouseId)
+	router.PUT(baseURL+"/api/v1/inventory/warehouses/:warehouseId", wrapper.PutApiV1InventoryWarehousesWarehouseId)
 	router.GET(baseURL+"/health", wrapper.GetHealth)
 	router.GET(baseURL+"/ready", wrapper.GetReady)
 

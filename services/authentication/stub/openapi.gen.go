@@ -14,6 +14,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	JwtAuthScopes = "JwtAuth.Scopes"
+)
+
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
 	Code    string `json:"code"`
@@ -36,8 +40,31 @@ type LoginResponse struct {
 	TokenType string `json:"token_type"`
 }
 
+// MeResponse defines model for MeResponse.
+type MeResponse struct {
+	Email openapi_types.Email `json:"email"`
+
+	// FullName May be empty if not set
+	FullName *string            `json:"full_name,omitempty"`
+	TenantId openapi_types.UUID `json:"tenant_id"`
+	UserId   openapi_types.UUID `json:"user_id"`
+}
+
 // PlainTextOk Plain-text OK marker for probes
 type PlainTextOk = string
+
+// RefreshRequest defines model for RefreshRequest.
+type RefreshRequest struct {
+	// RefreshToken Refresh token (opaque or JWT per product decision)
+	RefreshToken string `json:"refresh_token"`
+}
+
+// RefreshResponse defines model for RefreshResponse.
+type RefreshResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int64  `json:"expires_in"`
+	TokenType   string `json:"token_type"`
+}
 
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
@@ -57,6 +84,9 @@ type RegisterResponse struct {
 // PostApiV1AuthLoginJSONRequestBody defines body for PostApiV1AuthLogin for application/json ContentType.
 type PostApiV1AuthLoginJSONRequestBody = LoginRequest
 
+// PostApiV1AuthRefreshJSONRequestBody defines body for PostApiV1AuthRefresh for application/json ContentType.
+type PostApiV1AuthRefreshJSONRequestBody = RefreshRequest
+
 // PostApiV1AuthRegisterJSONRequestBody defines body for PostApiV1AuthRegister for application/json ContentType.
 type PostApiV1AuthRegisterJSONRequestBody = RegisterRequest
 
@@ -68,6 +98,15 @@ type ServerInterface interface {
 	// Login with email and password
 	// (POST /api/v1/auth/login)
 	PostApiV1AuthLogin(ctx echo.Context) error
+	// Log out (invalidate refresh session)
+	// (POST /api/v1/auth/logout)
+	PostApiV1AuthLogout(ctx echo.Context) error
+	// Current user profile
+	// (GET /api/v1/auth/me)
+	GetApiV1AuthMe(ctx echo.Context) error
+	// Refresh access token
+	// (POST /api/v1/auth/refresh)
+	PostApiV1AuthRefresh(ctx echo.Context) error
 	// Register tenant and first admin
 	// (POST /api/v1/auth/register)
 	PostApiV1AuthRegister(ctx echo.Context) error
@@ -99,6 +138,37 @@ func (w *ServerInterfaceWrapper) PostApiV1AuthLogin(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostApiV1AuthLogin(ctx)
+	return err
+}
+
+// PostApiV1AuthLogout converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1AuthLogout(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1AuthLogout(ctx)
+	return err
+}
+
+// GetApiV1AuthMe converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1AuthMe(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1AuthMe(ctx)
+	return err
+}
+
+// PostApiV1AuthRefresh converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1AuthRefresh(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1AuthRefresh(ctx)
 	return err
 }
 
@@ -159,6 +229,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/api/v1/auth/health", wrapper.GetApiV1AuthHealth)
 	router.POST(baseURL+"/api/v1/auth/login", wrapper.PostApiV1AuthLogin)
+	router.POST(baseURL+"/api/v1/auth/logout", wrapper.PostApiV1AuthLogout)
+	router.GET(baseURL+"/api/v1/auth/me", wrapper.GetApiV1AuthMe)
+	router.POST(baseURL+"/api/v1/auth/refresh", wrapper.PostApiV1AuthRefresh)
 	router.POST(baseURL+"/api/v1/auth/register", wrapper.PostApiV1AuthRegister)
 	router.GET(baseURL+"/health", wrapper.GetHealth)
 	router.GET(baseURL+"/ready", wrapper.GetReady)
@@ -222,6 +295,108 @@ type PostApiV1AuthLogin500JSONResponse ErrorResponse
 func (response PostApiV1AuthLogin500JSONResponse) VisitPostApiV1AuthLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthLogoutRequestObject struct {
+}
+
+type PostApiV1AuthLogoutResponseObject interface {
+	VisitPostApiV1AuthLogoutResponse(w http.ResponseWriter) error
+}
+
+type PostApiV1AuthLogout204Response struct {
+}
+
+func (response PostApiV1AuthLogout204Response) VisitPostApiV1AuthLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type PostApiV1AuthLogout401JSONResponse ErrorResponse
+
+func (response PostApiV1AuthLogout401JSONResponse) VisitPostApiV1AuthLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthLogout501JSONResponse ErrorResponse
+
+func (response PostApiV1AuthLogout501JSONResponse) VisitPostApiV1AuthLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(501)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetApiV1AuthMeRequestObject struct {
+}
+
+type GetApiV1AuthMeResponseObject interface {
+	VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error
+}
+
+type GetApiV1AuthMe200JSONResponse MeResponse
+
+func (response GetApiV1AuthMe200JSONResponse) VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetApiV1AuthMe401JSONResponse ErrorResponse
+
+func (response GetApiV1AuthMe401JSONResponse) VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetApiV1AuthMe501JSONResponse ErrorResponse
+
+func (response GetApiV1AuthMe501JSONResponse) VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(501)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthRefreshRequestObject struct {
+	Body *PostApiV1AuthRefreshJSONRequestBody
+}
+
+type PostApiV1AuthRefreshResponseObject interface {
+	VisitPostApiV1AuthRefreshResponse(w http.ResponseWriter) error
+}
+
+type PostApiV1AuthRefresh200JSONResponse RefreshResponse
+
+func (response PostApiV1AuthRefresh200JSONResponse) VisitPostApiV1AuthRefreshResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthRefresh400JSONResponse ErrorResponse
+
+func (response PostApiV1AuthRefresh400JSONResponse) VisitPostApiV1AuthRefreshResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostApiV1AuthRefresh501JSONResponse ErrorResponse
+
+func (response PostApiV1AuthRefresh501JSONResponse) VisitPostApiV1AuthRefreshResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(501)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -322,6 +497,15 @@ type StrictServerInterface interface {
 	// Login with email and password
 	// (POST /api/v1/auth/login)
 	PostApiV1AuthLogin(ctx context.Context, request PostApiV1AuthLoginRequestObject) (PostApiV1AuthLoginResponseObject, error)
+	// Log out (invalidate refresh session)
+	// (POST /api/v1/auth/logout)
+	PostApiV1AuthLogout(ctx context.Context, request PostApiV1AuthLogoutRequestObject) (PostApiV1AuthLogoutResponseObject, error)
+	// Current user profile
+	// (GET /api/v1/auth/me)
+	GetApiV1AuthMe(ctx context.Context, request GetApiV1AuthMeRequestObject) (GetApiV1AuthMeResponseObject, error)
+	// Refresh access token
+	// (POST /api/v1/auth/refresh)
+	PostApiV1AuthRefresh(ctx context.Context, request PostApiV1AuthRefreshRequestObject) (PostApiV1AuthRefreshResponseObject, error)
 	// Register tenant and first admin
 	// (POST /api/v1/auth/register)
 	PostApiV1AuthRegister(ctx context.Context, request PostApiV1AuthRegisterRequestObject) (PostApiV1AuthRegisterResponseObject, error)
@@ -391,6 +575,81 @@ func (sh *strictHandler) PostApiV1AuthLogin(ctx echo.Context) error {
 		return err
 	} else if validResponse, ok := response.(PostApiV1AuthLoginResponseObject); ok {
 		return validResponse.VisitPostApiV1AuthLoginResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostApiV1AuthLogout operation middleware
+func (sh *strictHandler) PostApiV1AuthLogout(ctx echo.Context) error {
+	var request PostApiV1AuthLogoutRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostApiV1AuthLogout(ctx.Request().Context(), request.(PostApiV1AuthLogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostApiV1AuthLogout")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostApiV1AuthLogoutResponseObject); ok {
+		return validResponse.VisitPostApiV1AuthLogoutResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetApiV1AuthMe operation middleware
+func (sh *strictHandler) GetApiV1AuthMe(ctx echo.Context) error {
+	var request GetApiV1AuthMeRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetApiV1AuthMe(ctx.Request().Context(), request.(GetApiV1AuthMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetApiV1AuthMe")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetApiV1AuthMeResponseObject); ok {
+		return validResponse.VisitGetApiV1AuthMeResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostApiV1AuthRefresh operation middleware
+func (sh *strictHandler) PostApiV1AuthRefresh(ctx echo.Context) error {
+	var request PostApiV1AuthRefreshRequestObject
+
+	var body PostApiV1AuthRefreshJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostApiV1AuthRefresh(ctx.Request().Context(), request.(PostApiV1AuthRefreshRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostApiV1AuthRefresh")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostApiV1AuthRefreshResponseObject); ok {
+		return validResponse.VisitPostApiV1AuthRefreshResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
