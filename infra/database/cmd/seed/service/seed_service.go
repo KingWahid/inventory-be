@@ -70,8 +70,8 @@ func (s *SeedService) Rollback(ctx context.Context) error {
 
 	_, err = tx.ExecContext(
 		ctx,
-		`DELETE FROM tenants WHERE name = $1`,
-		demoTenantName,
+		`DELETE FROM tenants WHERE slug = $1 OR name = $2`,
+		demoTenantSlug, demoTenantName,
 	)
 	if err != nil {
 		return fmt.Errorf("delete demo tenant: %w", err)
@@ -88,8 +88,8 @@ func (s *SeedService) seedTenant(ctx context.Context, tx *sql.Tx) (string, error
 
 	err := tx.QueryRowContext(
 		ctx,
-		`SELECT id FROM tenants WHERE name = $1 LIMIT 1`,
-		demoTenantName,
+		`SELECT id FROM tenants WHERE slug = $1 OR name = $2 LIMIT 1`,
+		demoTenantSlug, demoTenantName,
 	).Scan(&tenantID)
 	if err == nil {
 		return tenantID, nil
@@ -100,8 +100,8 @@ func (s *SeedService) seedTenant(ctx context.Context, tx *sql.Tx) (string, error
 
 	err = tx.QueryRowContext(
 		ctx,
-		`INSERT INTO tenants (name) VALUES ($1) RETURNING id`,
-		demoTenantName,
+		`INSERT INTO tenants (name, slug, is_active, settings) VALUES ($1, $2, true, '{}'::jsonb) RETURNING id`,
+		demoTenantName, demoTenantSlug,
 	).Scan(&tenantID)
 	if err != nil {
 		return "", fmt.Errorf("insert tenant: %w", err)
@@ -118,14 +118,15 @@ func (s *SeedService) seedAdminUser(ctx context.Context, tx *sql.Tx, tenantID st
 
 	_, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO users (tenant_id, email, password_hash, role)
-		 VALUES ($1, $2, $3, $4)
+		`INSERT INTO users (tenant_id, email, password_hash, role, full_name)
+		 VALUES ($1, $2, $3, $4, $5)
 		 ON CONFLICT (tenant_id, email)
 		 DO UPDATE SET
 		   password_hash = EXCLUDED.password_hash,
 		   role = EXCLUDED.role,
+		   full_name = EXCLUDED.full_name,
 		   updated_at = NOW()`,
-		tenantID, adminEmail, string(passwordHash), adminRole,
+		tenantID, adminEmail, string(passwordHash), adminRole, adminFullName,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert admin user: %w", err)

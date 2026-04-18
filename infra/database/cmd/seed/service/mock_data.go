@@ -24,10 +24,13 @@ type WarehouseSeed struct {
 }
 
 const (
-	demoTenantName  = "Demo Tenant"
-	adminEmail      = "admin@demo.local"
-	adminPassword   = "admin123"
-	adminRole       = "owner"
+	demoTenantName = "Demo Tenant"
+	// demoTenantSlug fixed unique slug for seed (matches tenants.slug UNIQUE).
+	demoTenantSlug = "demo-tenant-seed"
+	adminEmail     = "admin@demo.local"
+	adminPassword = "admin123"
+	adminRole     = "owner"
+	adminFullName = "Demo Admin"
 	defaultReqState = "{}"
 )
 

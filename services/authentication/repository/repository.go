@@ -34,18 +34,20 @@ func (r *repository) CreateTenantAdmin(ctx context.Context, in schemas.CreateTen
 
 	err := r.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Raw(
-			`INSERT INTO tenants (name) VALUES (?) RETURNING id`,
+			`INSERT INTO tenants (name, slug, is_active, settings) VALUES (?, ?, true, '{}'::jsonb) RETURNING id`,
 			strings.TrimSpace(in.TenantName),
+			strings.TrimSpace(strings.ToLower(in.TenantSlug)),
 		).Scan(&tenantID).Error; err != nil {
 			return err
 		}
 
 		if err := tx.Raw(
-			`INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, ?, ?, ?) RETURNING id`,
+			`INSERT INTO users (tenant_id, email, password_hash, role, full_name) VALUES (?, ?, ?, ?, ?) RETURNING id`,
 			tenantID,
 			strings.TrimSpace(strings.ToLower(in.AdminEmail)),
 			in.PasswordHash,
 			in.Role,
+			strings.TrimSpace(in.AdminFullName),
 		).Scan(&userID).Error; err != nil {
 			return err
 		}
