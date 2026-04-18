@@ -22,7 +22,7 @@ import (
 
 // errOrListSvc implements service.Service for category handler tests.
 type errOrListSvc struct {
-	movementSvcNoop
+	movementEmbedNoop
 	listOut cataloguc.ListCategoriesOutput
 	listErr error
 	delErr  error

@@ -20,7 +20,7 @@ import (
 )
 
 type warehouseDelSvc struct {
-	movementSvcNoop
+	movementEmbedNoop
 }
 
 func (warehouseDelSvc) PingDB(context.Context) error { return nil }

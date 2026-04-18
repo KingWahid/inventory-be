@@ -3,15 +3,17 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/KingWahid/inventory/backend/pkg/database/transaction"
 	"gorm.io/gorm"
 )
 
-// Repository inserts outbox rows within the caller's transaction.
+// Repository inserts outbox rows within the caller's transaction and relays unpublished rows to Redis (RelayPublishBatch).
 type Repository interface {
 	Ping() error
 	Insert(ctx context.Context, in InsertInput) error
+	RelayPublishBatch(ctx context.Context, limit int, publish func(OutboxRow) error) (int, error)
 }
 
 // InsertInput maps to outbox_events (published defaults false).
@@ -41,13 +43,14 @@ func (r *repository) Ping() error {
 }
 
 type outboxEventRow struct {
-	ID            int64  `gorm:"column:id;primaryKey;autoIncrement"`
-	TenantID      string `gorm:"column:tenant_id;type:uuid"`
-	EventType     string `gorm:"column:event_type"`
-	AggregateType string `gorm:"column:aggregate_type"`
-	AggregateID   string `gorm:"column:aggregate_id;type:uuid"`
-	Payload       []byte `gorm:"column:payload;type:jsonb"`
-	Published     bool   `gorm:"column:published"`
+	ID            int64     `gorm:"column:id;primaryKey;autoIncrement"`
+	TenantID      string    `gorm:"column:tenant_id;type:uuid"`
+	EventType     string    `gorm:"column:event_type"`
+	AggregateType string    `gorm:"column:aggregate_type"`
+	AggregateID   string    `gorm:"column:aggregate_id;type:uuid"`
+	Payload       []byte    `gorm:"column:payload;type:jsonb"`
+	Published     bool      `gorm:"column:published"`
+	CreatedAt     time.Time `gorm:"column:created_at"`
 }
 
 func (outboxEventRow) TableName() string { return "outbox_events" }

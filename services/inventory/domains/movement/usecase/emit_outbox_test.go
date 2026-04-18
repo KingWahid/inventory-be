@@ -186,6 +186,10 @@ func (s *spyOutbox) Insert(ctx context.Context, in outboxrepo.InsertInput) error
 	return nil
 }
 
+func (s *spyOutbox) RelayPublishBatch(context.Context, int, func(outboxrepo.OutboxRow) error) (int, error) {
+	return 0, nil
+}
+
 type catalogStub struct {
 	get func(ctx context.Context, productID string) (catalogrepo.Product, error)
 }
