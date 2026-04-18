@@ -231,8 +231,12 @@ func TestPostApiV1AuthRegister_Failure(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("failed decode response: %v", err)
 	}
-	if got["code"] != errorcodes.CodeValidationError {
-		t.Fatalf("expected code %q, got %v", errorcodes.CodeValidationError, got["code"])
+	errObj, ok := got["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected §9 envelope with error object, got %+v", got)
+	}
+	if errObj["code"] != errorcodes.CodeValidationError {
+		t.Fatalf("expected code %q, got %v", errorcodes.CodeValidationError, errObj["code"])
 	}
 }
 

@@ -1,34 +1,24 @@
 package api
 
 import (
-	"net/http"
-
-	"github.com/KingWahid/inventory/backend/services/authentication/stub"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	"github.com/labstack/echo/v4"
 )
 
-const msgNotImplemented = "endpoint not implemented yet"
-
 // PostApiV1AuthRefresh handles POST /api/v1/auth/refresh.
 func (h *ServerHandler) PostApiV1AuthRefresh(c echo.Context) error {
-	return c.JSON(http.StatusNotImplemented, stub.ErrorResponse{
-		Code:    "NOT_IMPLEMENTED",
-		Message: msgNotImplemented,
-	})
+	_ = c
+	return errorcodes.ErrNotImplemented
 }
 
 // PostApiV1AuthLogout handles POST /api/v1/auth/logout.
 func (h *ServerHandler) PostApiV1AuthLogout(c echo.Context) error {
-	return c.JSON(http.StatusNotImplemented, stub.ErrorResponse{
-		Code:    "NOT_IMPLEMENTED",
-		Message: msgNotImplemented,
-	})
+	_ = c
+	return errorcodes.ErrNotImplemented
 }
 
 // GetApiV1AuthMe handles GET /api/v1/auth/me.
 func (h *ServerHandler) GetApiV1AuthMe(c echo.Context) error {
-	return c.JSON(http.StatusNotImplemented, stub.ErrorResponse{
-		Code:    "NOT_IMPLEMENTED",
-		Message: msgNotImplemented,
-	})
+	_ = c
+	return errorcodes.ErrNotImplemented
 }

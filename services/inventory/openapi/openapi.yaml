@@ -4,7 +4,8 @@ info:
   version: 0.2.0
   description: |
     Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
-    Full §9 response envelope alignment is deferred (BACKEND_TASKS 2.3).
+    JSON errors from Echo (`success`, nested `error`, `meta.request_id`) via pkg/common/errorcodes (task 2.2).
+    Full §9 success envelope for data responses is deferred (BACKEND_TASKS 2.3).
 paths:
   /health:
     get:

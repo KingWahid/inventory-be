@@ -4,7 +4,8 @@ info:
   version: 0.2.0
   description: |
     Tenant scope is derived from the JWT (`tenant_id` claim), not from `X-Tenant-Id`.
-    Full ARCHITECTURE §9 response envelope (`success`/`data`/`meta`) is tracked separately (BACKEND_TASKS 2.3).
+    JSON error responses from Echo use ARCHITECTURE §9 shape: `success`, nested `error` (`code`, `message`, optional `message_id`, `details`), `meta.request_id` — see `APIErrorEnvelope` in components (task 2.2).
+    Full §9 success envelope for happy paths (`success`/`data`/`meta`) is tracked separately (BACKEND_TASKS 2.3).
 servers:
   - url: /
 paths:
@@ -213,6 +214,33 @@ components:
       bearerFormat: JWT
       description: Access token JWT; includes tenant_id claim.
   schemas:
+    APIErrorEnvelope:
+      type: object
+      required: [success, error]
+      description: Runtime JSON for 4xx/5xx from authentication Echo HTTPErrorHandler (ARCHITECTURE §9).
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          $ref: '#/components/schemas/ErrorPayload'
+        meta:
+          type: object
+          additionalProperties: true
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        message_id:
+          type: string
+          description: Stable key for future i18n
+        details:
+          type: object
+          additionalProperties: true
     RefreshRequest:
       type: object
       required:
@@ -257,6 +285,8 @@ components:
           description: May be empty if not set
     ErrorResponse:
       type: object
+      description: >-
+        Legacy flat schema kept for references; live 4xx/5xx bodies use APIErrorEnvelope (nested `error` object).
       required:
         - code
         - message

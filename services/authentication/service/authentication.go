@@ -67,7 +67,11 @@ func (s *AuthenticationService) RegisterTenantAdmin(ctx context.Context, in Regi
 		Role:          "owner",
 	})
 	if err != nil {
-		return RegisterResult{}, fmt.Errorf("register tenant admin: %w", err)
+		var ae errorcodes.AppError
+		if errors.As(err, &ae) {
+			return RegisterResult{}, err
+		}
+		return RegisterResult{}, errorcodes.ErrInternal
 	}
 
 	return RegisterResult{
@@ -105,11 +109,11 @@ func (s *AuthenticationService) Login(ctx context.Context, in LoginInput) (Login
 	}
 	access, err := s.jwt.GenerateAccessToken(ci)
 	if err != nil {
-		return LoginResult{}, fmt.Errorf("login: generate access token: %w", err)
+		return LoginResult{}, err
 	}
 	refresh, err := s.jwt.GenerateRefreshToken(ci)
 	if err != nil {
-		return LoginResult{}, fmt.Errorf("login: generate refresh token: %w", err)
+		return LoginResult{}, err
 	}
 
 	return LoginResult{

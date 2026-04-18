@@ -12,6 +12,7 @@ const (
 	CodeInsufficientStock = "INSUFFICIENT_STOCK"
 	CodeMovementNotDraft  = "MOVEMENT_NOT_DRAFT"
 	CodeInternalError     = "INTERNAL_ERROR"
+	CodeNotImplemented    = "NOT_IMPLEMENTED"
 )
 
 var (
@@ -28,4 +29,6 @@ var (
 	ErrMovementDraft   = New(CodeMovementNotDraft, "Cannot modify confirmed or cancelled movement", 422)
 
 	ErrInternal = New(CodeInternalError, "Unexpected server error", 500)
+
+	ErrNotImplemented = New(CodeNotImplemented, "Not implemented yet", 501)
 )

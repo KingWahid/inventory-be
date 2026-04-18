@@ -18,7 +18,32 @@ const (
 	JwtAuthScopes = "JwtAuth.Scopes"
 )
 
-// ErrorResponse defines model for ErrorResponse.
+// Defines values for APIErrorEnvelopeSuccess.
+const (
+	False APIErrorEnvelopeSuccess = false
+)
+
+// APIErrorEnvelope Runtime JSON for 4xx/5xx from authentication Echo HTTPErrorHandler (ARCHITECTURE §9).
+type APIErrorEnvelope struct {
+	Error   ErrorPayload            `json:"error"`
+	Meta    *map[string]interface{} `json:"meta,omitempty"`
+	Success APIErrorEnvelopeSuccess `json:"success"`
+}
+
+// APIErrorEnvelopeSuccess defines model for APIErrorEnvelope.Success.
+type APIErrorEnvelopeSuccess bool
+
+// ErrorPayload defines model for ErrorPayload.
+type ErrorPayload struct {
+	Code    string                  `json:"code"`
+	Details *map[string]interface{} `json:"details,omitempty"`
+	Message string                  `json:"message"`
+
+	// MessageId Stable key for future i18n
+	MessageId *string `json:"message_id,omitempty"`
+}
+
+// ErrorResponse Legacy flat schema kept for references; live 4xx/5xx bodies use APIErrorEnvelope (nested `error` object).
 type ErrorResponse struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`

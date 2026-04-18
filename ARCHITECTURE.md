@@ -1264,17 +1264,19 @@ logger.Info("movement confirmed",
 | `WAREHOUSE_HAS_STOCK` | 422 | Cannot deactivate warehouse with stock |
 | `INSUFFICIENT_STOCK` | 422 | Outbound/transfer qty exceeds available |
 | `MOVEMENT_NOT_DRAFT` | 422 | Cannot modify confirmed/cancelled movement |
+| `NOT_IMPLEMENTED` | 501 | Endpoint stub / not yet implemented |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 
 ### Domain Error Pattern (Go)
 
 ```go
-// pkg/common/errorcodes atau services/inventory/domains/<domain>/errors.go
+// pkg/common/errorcodes — AppError is the flat projection of the nested `error` object in §9 JSON.
 type AppError struct {
-    Code    string         `json:"code"`
-    Message string         `json:"message"`
-    Status  int            `json:"-"`
-    Details map[string]any `json:"details,omitempty"`
+    Code      string         `json:"code"`
+    Message   string         `json:"message"`
+    MessageID string         `json:"message_id,omitempty"` // optional i18n key
+    Status    int            `json:"-"`
+    Details   map[string]any `json:"details,omitempty"`
 }
 
 var (
@@ -1287,9 +1289,11 @@ var (
 )
 ```
 
-### 15.1 Evolusi ke konvensi `CustomError`
+### 15.1 HTTP JSON: envelope §9 dan `AppError`
 
-Dokumen ini mendefinisikan respons error domain dengan struct `AppError` di atas. Panduan [`docs/conventions/codebase-conventions.md`](docs/conventions/codebase-conventions.md) mengarahkan ke pola **`common.NewCustomError(...)`.WithMessageID(...).WithErrorCode(...).WithHTTPCode(...)`** untuk i18n dan kode terstandarisasi. **Target jangka panjang:** menyelaraskan penanganan error mentah di handler dengan satu pola (CustomError + `errorcodes`) agar tidak ada dua sistem paralel tanpa dokumentasi. Kode yang ada (`pkg/common/errorcodes`, handler inventory/authentication) adalah basis migrasi bertahap.
+Respons error ke klien mengikuti format §9 (`success: false`, objek `error` berisi `code`, `message`, `message_id` opsional, `details` opsional, serta `meta.request_id` bila tersedia). Implementasi: [`pkg/common/errorcodes.WriteHTTPError`](pkg/common/errorcodes/envelope.go) dipanggil dari Echo `HTTPErrorHandler` pada services authentication dan inventory.
+
+Domain layer tetap memakai **`AppError`** di [`pkg/common/errorcodes`](pkg/common/errorcodes/errors.go) dengan method chaining (`WithDetails`, `WithMessageID`, `WithStatus`, `WithCode`, `Problem`). Keputusan arsitektur: [`docs/adr/001-errors.md`](docs/adr/001-errors.md) (perluasan `AppError`, bukan tipe `CustomError` paralel). Panduan [`docs/conventions/codebase-conventions.md`](docs/conventions/codebase-conventions.md) yang menyebut `NewCustomError` setara dengan **`Problem(...)` / `New(...)` + chain** di paket ini.
 
 ### 15.2 Strategi pengujian
 
