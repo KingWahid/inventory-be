@@ -1,6 +1,8 @@
 # infra
 Infrastruktur proyek (CI, database, gateway, runtime config).
 
+**Kong gateway:** declarative [`kong/kong.yml`](kong/kong.yml), di-mount oleh `docker-compose.yml`. Ringkasan curl, JWT Option B, rate limit, dan health lewat proxy ada di [`../README.md`](../README.md#kong-api-gateway-dev).
+
 PostgreSQL bootstrap script ada di `infra/postgres/init.sql` dan dijalankan otomatis hanya saat inisialisasi pertama (volume data masih kosong) melalui `/docker-entrypoint-initdb.d`.
 
 Migration workflow (goose via Makefile):

@@ -1,11 +1,17 @@
-# Kong DB-less declarative config (dev). JWT/rate-limit: see BACKEND_TASKS 11.x.
+# Kong DB-less declarative config (dev). Compose: backend/docker-compose.yml mounts this file.
 #
-# JWT validation strategy:
-# - Option A: Enable Kong's jwt plugin on routes; Kong verifies HS256 using the same secret as services.
-#   Forward Authorization as-is; services may skip re-verify only if you fully trust Kong (not default here).
-# - Option B (current): Kong forwards Authorization; inventory-api and authentication-service validate JWT
-#   with pkg/common/jwt (Bearer access tokens only on protected paths).
-# Avoid verifying the same JWT twice with different secrets or configs — pick one trust boundary and document it.
+# JWT validation strategy (ARCHITECTURE §16; align with auth/inventory JWT_SECRET — task 2.1):
+# - Option A: Kong `jwt` plugin verifies HS256 at the edge; upstream may skip verification ONLY if
+#   you deliberately trust Kong and avoid conflicting secrets — document that contract per service.
+# - Option B (this file): NO Kong JWT plugin — Kong forwards `Authorization: Bearer …` unchanged;
+#   inventory-api and authentication-service validate tokens with pkg/common/jwt (HS256, access only
+#   on protected routes). This avoids double-sign / double-verify and mismatched issuer settings.
+#
+# If you switch to Option A later, disable or bypass duplicate verification in apps in a coordinated
+# rollout; never run two independent HS256 checks with different behavior unless intentional.
+#
+# Rate limits: login/register use bundled `rate-limiting` (policy=local for single Kong node). Expect
+# HTTP 429 when exceeded (not 403). Tune `minute`/`second` for prod or use Redis policy for clusters.
 _format_version: "3.0"
 _transform: true
 
@@ -29,6 +35,31 @@ services:
   - name: authentication-service
     url: http://authentication-service:8082
     routes:
+      # Order matters: specific paths before the /api/v1/auth prefix catch-all.
+      - name: auth-login-rate-limit
+        paths:
+          - /api/v1/auth/login
+        strip_path: false
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 10
+              second: 5
+              policy: local
+              fault_tolerant: true
+              hide_client_headers: false
+      - name: auth-register-rate-limit
+        paths:
+          - /api/v1/auth/register
+        strip_path: false
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 10
+              second: 5
+              policy: local
+              fault_tolerant: true
+              hide_client_headers: false
       - name: authentication-service-routes
         paths:
           - /api/v1/auth
@@ -43,10 +74,19 @@ services:
         strip_path: false
 
 plugins:
+  # Honors incoming X-Request-Id or generates one; echoes on response for clients (§9 meta.request_id).
+  - name: correlation-id
+    config:
+      header_name: X-Request-Id
+      generator: uuid
+      echo_downstream: true
+  # Dev + placeholder prod origin — replace https://app.example.com for production (YAML is static).
   - name: cors
     config:
       origins:
-        - "*"
+        - "http://localhost:3000"
+        - "http://127.0.0.1:3000"
+        - "https://app.example.com"
       methods:
         - GET
         - POST
