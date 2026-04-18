@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit/logwriter"
-	outboxrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/outbox/repository"
 	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
+	outboxrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/outbox/repository"
 )
 
 func (u *usecase) emitAudit(ctx context.Context, movementID string, mv movrepo.Movement) error {
@@ -52,6 +52,16 @@ type stockChangedPayload struct {
 	MovementID  string `json:"movement_id"`
 }
 
+type stockBelowThresholdPayload struct {
+	TenantID     string `json:"tenant_id"`
+	WarehouseID  string `json:"warehouse_id"`
+	ProductID    string `json:"product_id"`
+	CurrentQty   int32  `json:"current_qty"`
+	ReorderLevel int32  `json:"reorder_level"`
+}
+
+// emitOutbox inserts outbox_events (published=false via repository) using the caller's tx context.
+// Event types and JSON fields follow ARCHITECTURE.md §10.
 func (u *usecase) emitOutbox(ctx context.Context, tenantID, movementID string, mv movrepo.Movement, changes []stockQtyChange) error {
 	mc := movementCreatedPayload{
 		TenantID:        tenantID,
@@ -66,7 +76,7 @@ func (u *usecase) emitOutbox(ctx context.Context, tenantID, movementID string, m
 	}
 	if err := u.outbox.Insert(ctx, outboxrepo.InsertInput{
 		TenantID:      tenantID,
-		EventType:     "MovementCreated",
+		EventType:     EventTypeMovementCreated,
 		AggregateType: "movement",
 		AggregateID:   movementID,
 		Payload:       mb,
@@ -89,12 +99,42 @@ func (u *usecase) emitOutbox(ctx context.Context, tenantID, movementID string, m
 		}
 		if err := u.outbox.Insert(ctx, outboxrepo.InsertInput{
 			TenantID:      tenantID,
-			EventType:     "StockChanged",
+			EventType:     EventTypeStockChanged,
 			AggregateType: "movement",
 			AggregateID:   movementID,
 			Payload:       pb,
 		}); err != nil {
 			return err
+		}
+
+		if u.catalog != nil {
+			prod, err := u.catalog.GetProduct(ctx, ch.ProductID)
+			if err != nil {
+				return err
+			}
+			rl := prod.ReorderLevel
+			if rl > 0 && ch.NewQty < rl {
+				sb := stockBelowThresholdPayload{
+					TenantID:     tenantID,
+					WarehouseID:  ch.WarehouseID,
+					ProductID:    ch.ProductID,
+					CurrentQty:   ch.NewQty,
+					ReorderLevel: rl,
+				}
+				sbb, err := json.Marshal(sb)
+				if err != nil {
+					return err
+				}
+				if err := u.outbox.Insert(ctx, outboxrepo.InsertInput{
+					TenantID:      tenantID,
+					EventType:     EventTypeStockBelowThreshold,
+					AggregateType: "movement",
+					AggregateID:   movementID,
+					Payload:       sbb,
+				}); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	return nil

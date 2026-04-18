@@ -17,7 +17,7 @@ type Repository interface {
 // InsertInput maps to outbox_events (published defaults false).
 type InsertInput struct {
 	TenantID      string
-	EventType     string // e.g. MovementCreated, StockChanged
+	EventType     string // movement/usecase: EventTypeMovementCreated, EventTypeStockChanged, EventTypeStockBelowThreshold (ARCHITECTURE §10)
 	AggregateType string // e.g. movement
 	AggregateID   string // UUID string
 	Payload       []byte // JSON
