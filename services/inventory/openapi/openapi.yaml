@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Inventory API
-  version: 0.4.0
+  version: 0.5.0
   description: |
     Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
     JSON errors:  via pkg/common/errorcodes. JSON success: via pkg/common/httpresponse (`success`, `data`, `meta.request_id`, list `meta.pagination`).
@@ -187,8 +187,6 @@ paths:
                 $ref: "#/components/schemas/ProductListResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
     post:
       operationId: postApiV1InventoryProducts
       tags: [products]
@@ -212,8 +210,10 @@ paths:
           $ref: "#/components/responses/BadRequestError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
   /api/v1/inventory/products/{productId}:
     parameters:
       - $ref: "#/components/parameters/ProductId"
@@ -234,8 +234,6 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "404":
           $ref: "#/components/responses/NotFoundError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
     put:
       operationId: putApiV1InventoryProductsProductId
       tags: [products]
@@ -261,8 +259,10 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "404":
           $ref: "#/components/responses/NotFoundError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
     delete:
       operationId: deleteApiV1InventoryProductsProductId
       tags: [products]
@@ -276,8 +276,8 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "404":
           $ref: "#/components/responses/NotFoundError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
   /api/v1/inventory/products/{productId}/restore:
     parameters:
       - $ref: "#/components/parameters/ProductId"
@@ -298,8 +298,8 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "404":
           $ref: "#/components/responses/NotFoundError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
   /api/v1/inventory/warehouses:
     get:
       operationId: getApiV1InventoryWarehouses
@@ -696,6 +696,12 @@ components:
         price:
           type: number
           format: double
+        reorder_level:
+          type: integer
+          format: int32
+        metadata:
+          type: object
+          additionalProperties: true
         created_at:
           type: string
           format: date-time
@@ -727,6 +733,12 @@ components:
         price:
           type: number
           format: double
+        reorder_level:
+          type: integer
+          format: int32
+        metadata:
+          type: object
+          additionalProperties: true
     ProductUpdateRequest:
       type: object
       properties:
@@ -745,6 +757,12 @@ components:
         price:
           type: number
           format: double
+        reorder_level:
+          type: integer
+          format: int32
+        metadata:
+          type: object
+          additionalProperties: true
     ProductListResponse:
       type: object
       required: [success, data, meta]

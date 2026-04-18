@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
@@ -18,6 +19,13 @@ type Usecase interface {
 	CreateCategory(ctx context.Context, in CreateCategoryInput) (repository.Category, error)
 	UpdateCategory(ctx context.Context, categoryID string, in UpdateCategoryInput) (repository.Category, error)
 	DeleteCategory(ctx context.Context, categoryID string) error
+
+	ListProducts(ctx context.Context, in ListProductsInput) (ListProductsOutput, error)
+	GetProduct(ctx context.Context, productID string) (repository.Product, error)
+	CreateProduct(ctx context.Context, in CreateProductInput) (repository.Product, error)
+	UpdateProduct(ctx context.Context, productID string, in UpdateProductInput) (repository.Product, error)
+	DeleteProduct(ctx context.Context, productID string) error
+	RestoreProduct(ctx context.Context, productID string) (repository.Product, error)
 }
 
 // ListCategoriesInput maps from HTTP query params.
@@ -51,6 +59,48 @@ type UpdateCategoryInput struct {
 	Description *string
 	ParentID    *string
 	SortOrder   *int32
+}
+
+// ListProductsInput maps from HTTP query params for products.
+type ListProductsInput struct {
+	Page       *int
+	PerPage    *int
+	Search     *string
+	Sort       *string
+	Order      *string
+	CategoryID *string
+}
+
+// ListProductsOutput is §9 list + totals for products.
+type ListProductsOutput struct {
+	Items   []repository.Product
+	Total   int64
+	Page    int32
+	PerPage int32
+}
+
+// CreateProductInput is validated create payload for products.
+type CreateProductInput struct {
+	CategoryID   *string
+	SKU          string
+	Name         string
+	Description  *string
+	Unit         *string
+	Price        *float64
+	ReorderLevel *int32
+	MetadataJSON json.RawMessage
+}
+
+// UpdateProductInput is validated update payload for products.
+type UpdateProductInput struct {
+	CategoryID   *string
+	SKU          *string
+	Name         *string
+	Description  *string
+	Unit         *string
+	Price        *float64
+	ReorderLevel *int32
+	MetadataJSON *json.RawMessage
 }
 
 type usecase struct {

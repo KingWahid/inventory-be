@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -18,6 +19,9 @@ type fakeRepo struct {
 	count       int64
 	countErr    error
 	deleteCalls int
+
+	hasStock               bool
+	softDeleteProductCalls int
 }
 
 func (f *fakeRepo) Ping() error { return nil }
@@ -57,6 +61,44 @@ func (f *fakeRepo) CountActiveProductsByCategoryID(context.Context, string, stri
 	return f.count, f.countErr
 }
 
+func (f *fakeRepo) ListProducts(context.Context, string, repository.ListProductsFilter) ([]repository.Product, int64, error) {
+	return nil, 0, errors.New("not implemented")
+}
+
+func (f *fakeRepo) GetProductByID(_ context.Context, tenantID, id string) (repository.Product, error) {
+	return repository.Product{
+		ID:        id,
+		TenantID:  tenantID,
+		SKU:       "SKU",
+		Name:      "Product",
+		Unit:      "pcs",
+		Metadata:  json.RawMessage("{}"),
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}, nil
+}
+
+func (f *fakeRepo) CreateProduct(context.Context, string, repository.CreateProductInput) (repository.Product, error) {
+	return repository.Product{}, errors.New("not implemented")
+}
+
+func (f *fakeRepo) UpdateProduct(context.Context, string, string, repository.UpdateProductInput) (repository.Product, error) {
+	return repository.Product{}, errors.New("not implemented")
+}
+
+func (f *fakeRepo) SoftDeleteProduct(context.Context, string, string) error {
+	f.softDeleteProductCalls++
+	return nil
+}
+
+func (f *fakeRepo) RestoreProduct(context.Context, string, string) (repository.Product, error) {
+	return repository.Product{}, errors.New("not implemented")
+}
+
+func (f *fakeRepo) HasPositiveStock(context.Context, string, string) (bool, error) {
+	return f.hasStock, nil
+}
+
 func ctxWithTenant(tenant string) context.Context {
 	return commonjwt.ContextWithClaims(context.Background(), &commonjwt.Claims{TenantID: tenant})
 }
@@ -89,6 +131,39 @@ func TestDeleteCategory_SoftDeletesWhenNoProducts(t *testing.T) {
 func TestDeleteCategory_TenantMissing(t *testing.T) {
 	u := New(&fakeRepo{})
 	err := u.DeleteCategory(context.Background(), uuid.New().String())
+	if !errors.Is(err, errorcodes.ErrTenantContextMissing) {
+		t.Fatalf("want ErrTenantContextMissing got %v", err)
+	}
+}
+
+func TestDeleteProduct_RejectsWhenStock(t *testing.T) {
+	pid := uuid.New().String()
+	fr := &fakeRepo{hasStock: true}
+	u := New(fr)
+	err := u.DeleteProduct(ctxWithTenant("tenant-a"), pid)
+	if !errors.Is(err, errorcodes.ErrProductHasStock) {
+		t.Fatalf("want ErrProductHasStock got %v", err)
+	}
+	if fr.softDeleteProductCalls != 0 {
+		t.Fatalf("SoftDeleteProduct should not run")
+	}
+}
+
+func TestDeleteProduct_SoftDeletesWhenNoStock(t *testing.T) {
+	pid := uuid.New().String()
+	fr := &fakeRepo{hasStock: false}
+	u := New(fr)
+	if err := u.DeleteProduct(ctxWithTenant("tenant-a"), pid); err != nil {
+		t.Fatal(err)
+	}
+	if fr.softDeleteProductCalls != 1 {
+		t.Fatalf("want 1 SoftDeleteProduct got %d", fr.softDeleteProductCalls)
+	}
+}
+
+func TestDeleteProduct_TenantMissing(t *testing.T) {
+	u := New(&fakeRepo{})
+	err := u.DeleteProduct(context.Background(), uuid.New().String())
 	if !errors.Is(err, errorcodes.ErrTenantContextMissing) {
 		t.Fatalf("want ErrTenantContextMissing got %v", err)
 	}

@@ -45,6 +45,28 @@ func (e *errOrListSvc) UpdateCategory(context.Context, string, cataloguc.UpdateC
 
 func (e *errOrListSvc) DeleteCategory(context.Context, string) error { return e.delErr }
 
+func (e *errOrListSvc) ListProducts(context.Context, cataloguc.ListProductsInput) (cataloguc.ListProductsOutput, error) {
+	return cataloguc.ListProductsOutput{}, nil
+}
+
+func (e *errOrListSvc) GetProduct(context.Context, string) (catalogrepo.Product, error) {
+	return catalogrepo.Product{}, errorcodes.ErrNotFound
+}
+
+func (e *errOrListSvc) CreateProduct(context.Context, cataloguc.CreateProductInput) (catalogrepo.Product, error) {
+	return catalogrepo.Product{}, errorcodes.ErrNotFound
+}
+
+func (e *errOrListSvc) UpdateProduct(context.Context, string, cataloguc.UpdateProductInput) (catalogrepo.Product, error) {
+	return catalogrepo.Product{}, errorcodes.ErrNotFound
+}
+
+func (e *errOrListSvc) DeleteProduct(context.Context, string) error { return nil }
+
+func (e *errOrListSvc) RestoreProduct(context.Context, string) (catalogrepo.Product, error) {
+	return catalogrepo.Product{}, errorcodes.ErrNotFound
+}
+
 func TestCategoryHandlers_ListOK(t *testing.T) {
 	jwtSvc, err := commonjwt.NewService("cat-hdl-jwt-secret-32bytes-min", time.Hour, time.Hour)
 	if err != nil {

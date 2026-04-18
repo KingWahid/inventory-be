@@ -143,27 +143,31 @@ type PlainTextOk = string
 
 // Product defines model for Product.
 type Product struct {
-	CategoryId  *openapi_types.UUID `json:"category_id"`
-	CreatedAt   time.Time           `json:"created_at"`
-	DeletedAt   *time.Time          `json:"deleted_at"`
-	Description *string             `json:"description,omitempty"`
-	Id          openapi_types.UUID  `json:"id"`
-	Name        string              `json:"name"`
-	Price       *float64            `json:"price,omitempty"`
-	Sku         string              `json:"sku"`
-	TenantId    openapi_types.UUID  `json:"tenant_id"`
-	Unit        *string             `json:"unit,omitempty"`
-	UpdatedAt   time.Time           `json:"updated_at"`
+	CategoryId   *openapi_types.UUID     `json:"category_id"`
+	CreatedAt    time.Time               `json:"created_at"`
+	DeletedAt    *time.Time              `json:"deleted_at"`
+	Description  *string                 `json:"description,omitempty"`
+	Id           openapi_types.UUID      `json:"id"`
+	Metadata     *map[string]interface{} `json:"metadata,omitempty"`
+	Name         string                  `json:"name"`
+	Price        *float64                `json:"price,omitempty"`
+	ReorderLevel *int32                  `json:"reorder_level,omitempty"`
+	Sku          string                  `json:"sku"`
+	TenantId     openapi_types.UUID      `json:"tenant_id"`
+	Unit         *string                 `json:"unit,omitempty"`
+	UpdatedAt    time.Time               `json:"updated_at"`
 }
 
 // ProductCreateRequest defines model for ProductCreateRequest.
 type ProductCreateRequest struct {
-	CategoryId  *openapi_types.UUID `json:"category_id"`
-	Description *string             `json:"description,omitempty"`
-	Name        string              `json:"name"`
-	Price       *float64            `json:"price,omitempty"`
-	Sku         string              `json:"sku"`
-	Unit        *string             `json:"unit,omitempty"`
+	CategoryId   *openapi_types.UUID     `json:"category_id"`
+	Description  *string                 `json:"description,omitempty"`
+	Metadata     *map[string]interface{} `json:"metadata,omitempty"`
+	Name         string                  `json:"name"`
+	Price        *float64                `json:"price,omitempty"`
+	ReorderLevel *int32                  `json:"reorder_level,omitempty"`
+	Sku          string                  `json:"sku"`
+	Unit         *string                 `json:"unit,omitempty"`
 }
 
 // ProductListResponse defines model for ProductListResponse.
@@ -192,12 +196,14 @@ type ProductSuccessEnvelopeSuccess bool
 
 // ProductUpdateRequest defines model for ProductUpdateRequest.
 type ProductUpdateRequest struct {
-	CategoryId  *openapi_types.UUID `json:"category_id"`
-	Description *string             `json:"description,omitempty"`
-	Name        *string             `json:"name,omitempty"`
-	Price       *float64            `json:"price,omitempty"`
-	Sku         *string             `json:"sku,omitempty"`
-	Unit        *string             `json:"unit,omitempty"`
+	CategoryId   *openapi_types.UUID     `json:"category_id"`
+	Description  *string                 `json:"description,omitempty"`
+	Metadata     *map[string]interface{} `json:"metadata,omitempty"`
+	Name         *string                 `json:"name,omitempty"`
+	Price        *float64                `json:"price,omitempty"`
+	ReorderLevel *int32                  `json:"reorder_level,omitempty"`
+	Sku          *string                 `json:"sku,omitempty"`
+	Unit         *string                 `json:"unit,omitempty"`
 }
 
 // SuccessMeta §9 meta for JSON success responses (list endpoints include pagination).

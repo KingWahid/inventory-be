@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -32,7 +33,7 @@ type ListFilter struct {
 	Order   string
 }
 
-// Repository defines data-access for catalog (categories).
+// Repository defines data-access for catalog (categories + products).
 type Repository interface {
 	Ping() error
 	List(ctx context.Context, tenantID string, f ListFilter) ([]Category, int64, error)
@@ -41,6 +42,14 @@ type Repository interface {
 	Update(ctx context.Context, tenantID, id string, in UpdateInput) (Category, error)
 	SoftDelete(ctx context.Context, tenantID, id string) error
 	CountActiveProductsByCategoryID(ctx context.Context, tenantID, categoryID string) (int64, error)
+
+	ListProducts(ctx context.Context, tenantID string, f ListProductsFilter) ([]Product, int64, error)
+	GetProductByID(ctx context.Context, tenantID, id string) (Product, error)
+	CreateProduct(ctx context.Context, tenantID string, in CreateProductInput) (Product, error)
+	UpdateProduct(ctx context.Context, tenantID, id string, in UpdateProductInput) (Product, error)
+	SoftDeleteProduct(ctx context.Context, tenantID, id string) error
+	RestoreProduct(ctx context.Context, tenantID, id string) (Product, error)
+	HasPositiveStock(ctx context.Context, tenantID, productID string) (bool, error)
 }
 
 // CreateInput is repository payload for insert.
@@ -57,6 +66,57 @@ type UpdateInput struct {
 	Description *string
 	ParentID    *string
 	SortOrder   *int32
+}
+
+// Product is a tenant-scoped product row for application layers.
+type Product struct {
+	ID           string
+	TenantID     string
+	CategoryID   *string
+	SKU          string
+	Name         string
+	Description  *string
+	Unit         string
+	Price        float64
+	ReorderLevel int32
+	Metadata     json.RawMessage
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    *time.Time
+}
+
+// ListProductsFilter lists active products with optional category filter.
+type ListProductsFilter struct {
+	Page       int
+	PerPage    int
+	Search     string
+	Sort       string
+	Order      string
+	CategoryID *string
+}
+
+// CreateProductInput is insert payload for products.
+type CreateProductInput struct {
+	CategoryID   *string
+	SKU          string
+	Name         string
+	Description  *string
+	Unit         *string
+	Price        *float64
+	ReorderLevel *int32
+	Metadata     json.RawMessage
+}
+
+// UpdateProductInput is partial update for products (nil = omit).
+type UpdateProductInput struct {
+	CategoryID   *string
+	SKU          *string
+	Name         *string
+	Description  *string
+	Unit         *string
+	Price        *float64
+	ReorderLevel *int32
+	Metadata     *json.RawMessage
 }
 
 type repository struct {

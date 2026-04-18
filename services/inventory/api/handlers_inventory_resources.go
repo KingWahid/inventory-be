@@ -124,39 +124,153 @@ func (h *ServerHandler) PutApiV1InventoryCategoriesCategoryId(c echo.Context, ca
 }
 
 // GetApiV1InventoryProducts handles GET /api/v1/inventory/products.
-func (h *ServerHandler) GetApiV1InventoryProducts(c echo.Context, _ stub.GetApiV1InventoryProductsParams) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) GetApiV1InventoryProducts(c echo.Context, params stub.GetApiV1InventoryProductsParams) error {
+	ctx := c.Request().Context()
+	in := cataloguc.ListProductsInput{}
+	if params.Page != nil {
+		in.Page = params.Page
+	}
+	if params.PerPage != nil {
+		in.PerPage = params.PerPage
+	}
+	if params.Search != nil {
+		s := string(*params.Search)
+		in.Search = &s
+	}
+	if params.Sort != nil {
+		s := string(*params.Sort)
+		in.Sort = &s
+	}
+	if params.Order != nil {
+		o := string(*params.Order)
+		in.Order = &o
+	}
+	if params.CategoryId != nil {
+		s := params.CategoryId.String()
+		in.CategoryID = &s
+	}
+
+	out, err := h.svc.ListProducts(ctx, in)
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	data := make([]stub.Product, 0, len(out.Items))
+	for i := range out.Items {
+		row, mErr := productRepoToStub(out.Items[i])
+		if mErr != nil {
+			return httpresponse.Fail(c, errorcodes.ErrInternal)
+		}
+		data = append(data, row)
+	}
+	pg := httpresponse.PaginationMeta{
+		Page:       out.Page,
+		PerPage:    out.PerPage,
+		Total:      out.Total,
+		TotalPages: httpresponse.ComputeTotalPages(out.Total, int64(out.PerPage)),
+	}
+	return httpresponse.OKList(c, http.StatusOK, data, pg)
 }
 
 // PostApiV1InventoryProducts handles POST /api/v1/inventory/products.
 func (h *ServerHandler) PostApiV1InventoryProducts(c echo.Context) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+	ctx := c.Request().Context()
+	var body stub.PostApiV1InventoryProductsJSONRequestBody
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	metaRaw, err := metadataFromStub(body.Metadata)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	p, err := h.svc.CreateProduct(ctx, cataloguc.CreateProductInput{
+		CategoryID:   optionalUUIDString(body.CategoryId),
+		SKU:          body.Sku,
+		Name:         body.Name,
+		Description:  body.Description,
+		Unit:         body.Unit,
+		Price:        body.Price,
+		ReorderLevel: body.ReorderLevel,
+		MetadataJSON: metaRaw,
+	})
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	row, err := productRepoToStub(p)
+	if err != nil {
+		return httpresponse.Fail(c, errorcodes.ErrInternal)
+	}
+	return httpresponse.OK(c, http.StatusCreated, row)
 }
 
 // DeleteApiV1InventoryProductsProductId handles DELETE /api/v1/inventory/products/{productId}.
-func (h *ServerHandler) DeleteApiV1InventoryProductsProductId(c echo.Context, _ stub.ProductId) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) DeleteApiV1InventoryProductsProductId(c echo.Context, productId stub.ProductId) error {
+	ctx := c.Request().Context()
+	if err := h.svc.DeleteProduct(ctx, productId.String()); err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 // GetApiV1InventoryProductsProductId handles GET /api/v1/inventory/products/{productId}.
-func (h *ServerHandler) GetApiV1InventoryProductsProductId(c echo.Context, _ stub.ProductId) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) GetApiV1InventoryProductsProductId(c echo.Context, productId stub.ProductId) error {
+	ctx := c.Request().Context()
+	p, err := h.svc.GetProduct(ctx, productId.String())
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	row, err := productRepoToStub(p)
+	if err != nil {
+		return httpresponse.Fail(c, errorcodes.ErrInternal)
+	}
+	return httpresponse.OK(c, http.StatusOK, row)
 }
 
 // PutApiV1InventoryProductsProductId handles PUT /api/v1/inventory/products/{productId}.
-func (h *ServerHandler) PutApiV1InventoryProductsProductId(c echo.Context, _ stub.ProductId) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) PutApiV1InventoryProductsProductId(c echo.Context, productId stub.ProductId) error {
+	ctx := c.Request().Context()
+	var body stub.PutApiV1InventoryProductsProductIdJSONRequestBody
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	in := cataloguc.UpdateProductInput{
+		CategoryID:   optionalUUIDString(body.CategoryId),
+		SKU:          body.Sku,
+		Name:         body.Name,
+		Description:  body.Description,
+		Unit:         body.Unit,
+		Price:        body.Price,
+		ReorderLevel: body.ReorderLevel,
+	}
+	if body.Metadata != nil {
+		metaRaw, err := metadataFromStub(body.Metadata)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		in.MetadataJSON = &metaRaw
+	}
+	p, err := h.svc.UpdateProduct(ctx, productId.String(), in)
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	row, err := productRepoToStub(p)
+	if err != nil {
+		return httpresponse.Fail(c, errorcodes.ErrInternal)
+	}
+	return httpresponse.OK(c, http.StatusOK, row)
 }
 
 // PostApiV1InventoryProductsProductIdRestore handles POST /api/v1/inventory/products/{productId}/restore.
-func (h *ServerHandler) PostApiV1InventoryProductsProductIdRestore(c echo.Context, _ stub.ProductId) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) PostApiV1InventoryProductsProductIdRestore(c echo.Context, productId stub.ProductId) error {
+	ctx := c.Request().Context()
+	p, err := h.svc.RestoreProduct(ctx, productId.String())
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	row, err := productRepoToStub(p)
+	if err != nil {
+		return httpresponse.Fail(c, errorcodes.ErrInternal)
+	}
+	return httpresponse.OK(c, http.StatusOK, row)
 }
 
 // GetApiV1InventoryWarehouses handles GET /api/v1/inventory/warehouses.
