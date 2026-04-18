@@ -10,7 +10,8 @@ const (
 	CodeProductHasStock   = "PRODUCT_HAS_STOCK"
 	CodeWarehouseHasStock = "WAREHOUSE_HAS_STOCK"
 	CodeInsufficientStock = "INSUFFICIENT_STOCK"
-	CodeMovementNotDraft  = "MOVEMENT_NOT_DRAFT"
+	CodeMovementNotDraft       = "MOVEMENT_NOT_DRAFT"
+	CodeCategoryHasActiveProducts = "CATEGORY_HAS_ACTIVE_PRODUCTS"
 	CodeInternalError     = "INTERNAL_ERROR"
 	CodeNotImplemented    = "NOT_IMPLEMENTED"
 )
@@ -27,6 +28,7 @@ var (
 	ErrWarehouseStock  = New(CodeWarehouseHasStock, "Cannot deactivate warehouse with stock", 422)
 	ErrInsufficient    = New(CodeInsufficientStock, "Outbound quantity exceeds available stock", 422)
 	ErrMovementDraft   = New(CodeMovementNotDraft, "Cannot modify confirmed or cancelled movement", 422)
+	ErrCategoryHasActiveProducts = New(CodeCategoryHasActiveProducts, "Cannot delete category while active products reference it", 422)
 
 	ErrInternal = New(CodeInternalError, "Unexpected server error", 500)
 

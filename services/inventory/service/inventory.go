@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/KingWahid/inventory/backend/pkg/database/transaction"
+	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
 	"gorm.io/gorm"
 )
 
@@ -12,13 +13,15 @@ import (
 type InventoryService struct {
 	db        *gorm.DB
 	txManager transaction.Manager
+	catalog   cataloguc.Usecase
 }
 
 // NewInventoryService constructs the default inventory application service.
-func NewInventoryService(db *gorm.DB, txManager transaction.Manager) *InventoryService {
+func NewInventoryService(db *gorm.DB, txManager transaction.Manager, catalog cataloguc.Usecase) *InventoryService {
 	return &InventoryService{
 		db:        db,
 		txManager: txManager,
+		catalog:   catalog,
 	}
 }
 

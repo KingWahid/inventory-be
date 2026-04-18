@@ -1,10 +1,56 @@
 package usecase
 
-import "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
+import (
+	"context"
+	"strings"
 
-// Usecase defines application logic contract for catalog domain.
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
+	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
+	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
+)
+
+// Usecase defines catalog application logic.
 type Usecase interface {
 	Ping() error
+	ListCategories(ctx context.Context, in ListCategoriesInput) (ListCategoriesOutput, error)
+	GetCategory(ctx context.Context, categoryID string) (repository.Category, error)
+	CreateCategory(ctx context.Context, in CreateCategoryInput) (repository.Category, error)
+	UpdateCategory(ctx context.Context, categoryID string, in UpdateCategoryInput) (repository.Category, error)
+	DeleteCategory(ctx context.Context, categoryID string) error
+}
+
+// ListCategoriesInput maps from HTTP query params.
+type ListCategoriesInput struct {
+	Page    *int
+	PerPage *int
+	Search  *string
+	Sort    *string
+	Order   *string
+}
+
+// ListCategoriesOutput is used for §9 list + pagination meta.
+type ListCategoriesOutput struct {
+	Items   []repository.Category
+	Total   int64
+	Page    int32
+	PerPage int32
+}
+
+// CreateCategoryInput is validated create payload.
+type CreateCategoryInput struct {
+	Name        string
+	Description *string
+	ParentID    *string
+	SortOrder   *int32
+}
+
+// UpdateCategoryInput is validated update payload.
+type UpdateCategoryInput struct {
+	Name        *string
+	Description *string
+	ParentID    *string
+	SortOrder   *int32
 }
 
 type usecase struct {
@@ -18,4 +64,164 @@ func New(repo repository.Repository) Usecase {
 
 func (u *usecase) Ping() error {
 	return u.repo.Ping()
+}
+
+func tenantFromCtx(ctx context.Context) (string, error) {
+	return commonjwt.TenantIDFromContext(ctx)
+}
+
+func (u *usecase) ListCategories(ctx context.Context, in ListCategoriesInput) (ListCategoriesOutput, error) {
+	tid, err := tenantFromCtx(ctx)
+	if err != nil {
+		return ListCategoriesOutput{}, err
+	}
+
+	page := 1
+	perPage := 20
+	if in.Page != nil {
+		page = *in.Page
+	}
+	if in.PerPage != nil {
+		perPage = *in.PerPage
+	}
+	pagination.Normalize(&page, &perPage)
+
+	search := ""
+	if in.Search != nil {
+		search = strings.TrimSpace(*in.Search)
+	}
+	sort := ""
+	if in.Sort != nil {
+		sort = *in.Sort
+	}
+	order := ""
+	if in.Order != nil {
+		order = *in.Order
+	}
+
+	items, total, err := u.repo.List(ctx, tid, repository.ListFilter{
+		Page:    page,
+		PerPage: perPage,
+		Search:  search,
+		Sort:    sort,
+		Order:   order,
+	})
+	if err != nil {
+		return ListCategoriesOutput{}, err
+	}
+
+	return ListCategoriesOutput{
+		Items:   items,
+		Total:   total,
+		Page:    int32(page),
+		PerPage: int32(perPage),
+	}, nil
+}
+
+func (u *usecase) GetCategory(ctx context.Context, categoryID string) (repository.Category, error) {
+	tid, err := tenantFromCtx(ctx)
+	if err != nil {
+		return repository.Category{}, err
+	}
+	return u.repo.GetByID(ctx, tid, strings.TrimSpace(categoryID))
+}
+
+func (u *usecase) CreateCategory(ctx context.Context, in CreateCategoryInput) (repository.Category, error) {
+	tid, err := tenantFromCtx(ctx)
+	if err != nil {
+		return repository.Category{}, err
+	}
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		return repository.Category{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "name is required"})
+	}
+
+	if in.ParentID != nil && strings.TrimSpace(*in.ParentID) != "" {
+		pid := strings.TrimSpace(*in.ParentID)
+		if _, err := u.repo.GetByID(ctx, tid, pid); err != nil {
+			return repository.Category{}, err
+		}
+	}
+
+	return u.repo.Create(ctx, tid, repository.CreateInput{
+		Name:        name,
+		Description: in.Description,
+		ParentID:    normalizeParentID(in.ParentID),
+		SortOrder:   in.SortOrder,
+	})
+}
+
+func (u *usecase) UpdateCategory(ctx context.Context, categoryID string, in UpdateCategoryInput) (repository.Category, error) {
+	tid, err := tenantFromCtx(ctx)
+	if err != nil {
+		return repository.Category{}, err
+	}
+	id := strings.TrimSpace(categoryID)
+	if id == "" {
+		return repository.Category{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "category id is required"})
+	}
+
+	if in.ParentID != nil {
+		p := strings.TrimSpace(*in.ParentID)
+		if p != "" {
+			if p == id {
+				return repository.Category{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "parent_id cannot equal category id"})
+			}
+			if _, err := u.repo.GetByID(ctx, tid, p); err != nil {
+				return repository.Category{}, err
+			}
+		}
+	}
+
+	if in.Name != nil && strings.TrimSpace(*in.Name) == "" {
+		return repository.Category{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "name cannot be empty"})
+	}
+
+	repoIn := repository.UpdateInput{
+		Name:        in.Name,
+		Description: in.Description,
+		SortOrder:   in.SortOrder,
+	}
+	if in.ParentID != nil {
+		pid := normalizeParentID(in.ParentID)
+		repoIn.ParentID = pid
+	}
+
+	return u.repo.Update(ctx, tid, id, repoIn)
+}
+
+func normalizeParentID(p *string) *string {
+	if p == nil {
+		return nil
+	}
+	s := strings.TrimSpace(*p)
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func (u *usecase) DeleteCategory(ctx context.Context, categoryID string) error {
+	tid, err := tenantFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+	id := strings.TrimSpace(categoryID)
+	if id == "" {
+		return errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "category id is required"})
+	}
+
+	if _, err := u.repo.GetByID(ctx, tid, id); err != nil {
+		return err
+	}
+
+	n, err := u.repo.CountActiveProductsByCategoryID(ctx, tid, id)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return errorcodes.ErrCategoryHasActiveProducts.WithDetails(map[string]any{"category_id": id, "active_products": n})
+	}
+
+	return u.repo.SoftDelete(ctx, tid, id)
 }

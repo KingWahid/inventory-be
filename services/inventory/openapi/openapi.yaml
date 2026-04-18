@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Inventory API
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
     JSON errors:  via pkg/common/errorcodes. JSON success: via pkg/common/httpresponse (`success`, `data`, `meta.request_id`, list `meta.pagination`).
@@ -68,8 +68,6 @@ paths:
                 $ref: "#/components/schemas/CategoryListResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
     post:
       operationId: postApiV1InventoryCategories
       tags: [categories]
@@ -93,8 +91,10 @@ paths:
           $ref: "#/components/responses/BadRequestError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
   /api/v1/inventory/categories/{categoryId}:
     parameters:
       - $ref: "#/components/parameters/CategoryId"
@@ -115,8 +115,6 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "404":
           $ref: "#/components/responses/NotFoundError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
     put:
       operationId: putApiV1InventoryCategoriesCategoryId
       tags: [categories]
@@ -142,8 +140,10 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "404":
           $ref: "#/components/responses/NotFoundError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
     delete:
       operationId: deleteApiV1InventoryCategoriesCategoryId
       tags: [categories]
@@ -157,8 +157,8 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "404":
           $ref: "#/components/responses/NotFoundError"
-        "501":
-          $ref: "#/components/responses/NotImplementedError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
   /api/v1/inventory/products:
     get:
       operationId: getApiV1InventoryProducts
@@ -496,6 +496,18 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     NotImplementedError:
       description: Endpoint not implemented yet
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ConflictError:
+      description: Resource conflict (e.g. duplicate name)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntityError:
+      description: Domain rule violation (e.g. cannot delete category with active products)
       content:
         application/json:
           schema:

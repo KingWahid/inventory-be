@@ -286,6 +286,9 @@ type WarehouseId = openapi_types.UUID
 // BadRequestError defines model for BadRequestError.
 type BadRequestError = ErrorResponse
 
+// ConflictError defines model for ConflictError.
+type ConflictError = ErrorResponse
+
 // NotFoundError defines model for NotFoundError.
 type NotFoundError = ErrorResponse
 
@@ -294,6 +297,9 @@ type NotImplementedError = ErrorResponse
 
 // UnauthorizedError defines model for UnauthorizedError.
 type UnauthorizedError = ErrorResponse
+
+// UnprocessableEntityError defines model for UnprocessableEntityError.
+type UnprocessableEntityError = ErrorResponse
 
 // GetApiV1InventoryCategoriesParams defines parameters for GetApiV1InventoryCategories.
 type GetApiV1InventoryCategoriesParams struct {

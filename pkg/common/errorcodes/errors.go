@@ -4,6 +4,8 @@
 // CustomError type — one classification path through ToHTTP and WriteHTTPError.
 package errorcodes
 
+import "errors"
+
 // AppError is the domain-level error contract returned from services and mapped to HTTP JSON.
 type AppError struct {
 	Code      string         `json:"code"`
@@ -18,6 +20,18 @@ func (e AppError) Error() string {
 		return e.Message
 	}
 	return e.Code
+}
+
+// Is implements error matching so errors.Is works with WithDetails/WithMessageID clones sharing the same Code.
+func (e AppError) Is(target error) bool {
+	if target == nil {
+		return false
+	}
+	var t AppError
+	if !errors.As(target, &t) {
+		return false
+	}
+	return e.Code != "" && e.Code == t.Code
 }
 
 // New constructs an AppError (machine code, safe message, HTTP status).
