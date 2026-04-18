@@ -48,4 +48,5 @@ type Service interface {
 	ListAuditLogs(ctx context.Context, in audituc.ListAuditLogsInput) (audituc.ListAuditLogsOutput, error)
 
 	GetDashboardSummary(ctx context.Context) (dashboarduc.Summary, error)
+	GetDashboardMovementsChart(ctx context.Context, period string) (dashboarduc.MovementChart, error)
 }

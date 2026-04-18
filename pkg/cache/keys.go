@@ -21,6 +21,8 @@ var (
 	TTLCategoryList     = 15 * time.Minute
 	TTLWarehouseList    = 15 * time.Minute
 	TTLDashboardSummary = 30 * time.Second
+	// TTLDashboardChart matches summary; dashboard chart data invalidates on movement confirm (§13 plan 7.2).
+	TTLDashboardChart = 30 * time.Second
 )
 
 // KeyProduct is cache:t:{tid}:product:{id}
@@ -61,6 +63,22 @@ func PatternWarehouses(tenantID string) string {
 // KeyDashboardSummary cache:t:{tid}:dashboard:summary
 func KeyDashboardSummary(tenantID string) string {
 	return keyPrefix + tenantID + ":dashboard:summary"
+}
+
+// KeyDashboardMovementsChart cache:t:{tid}:dashboard:movements:chart:{periodKey}
+// periodKey is normalized daily|weekly|monthly (ChartPeriodFingerprint).
+func KeyDashboardMovementsChart(tenantID, periodKey string) string {
+	return keyPrefix + tenantID + ":dashboard:movements:chart:" + periodKey
+}
+
+// PatternDashboardMovementsChart matches all movement chart variants for DELETE after confirm.
+func PatternDashboardMovementsChart(tenantID string) string {
+	return keyPrefix + tenantID + ":dashboard:movements:chart:*"
+}
+
+// ChartPeriodFingerprint normalizes dashboard chart query variant for the cache key (daily|weekly|monthly).
+func ChartPeriodFingerprint(period string) string {
+	return strings.ToLower(strings.TrimSpace(period))
 }
 
 // QueryFingerprint hashes normalized list query dimensions (stable ordering).

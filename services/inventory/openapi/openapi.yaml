@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Inventory API
-  version: 0.7.3
+  version: 0.7.4
   description: |
     Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
     JSON errors:  via pkg/common/errorcodes. JSON success: via pkg/common/httpresponse (`success`, `data`, `meta.request_id`, list `meta.pagination`).
@@ -61,6 +61,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardSummarySuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /api/v1/inventory/dashboard/movements/chart:
+    get:
+      operationId: getApiV1InventoryDashboardMovementsChart
+      tags: [dashboard]
+      summary: Confirmed movement counts per UTC bucket (30 days / 12 weeks / 12 months); cache-aside ~30s (§13)
+      security:
+        - JwtAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          description: Bucket size (UTC). Daily = last 30 calendar days including today; weekly = 12 ISO weeks (Monday); monthly = 12 calendar months.
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+            default: daily
+      responses:
+        "200":
+          description: Time series of confirmed movements (updated_at UTC)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardMovementChartSuccessEnvelope"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
   /api/v1/inventory/categories:
@@ -953,6 +980,40 @@ components:
           enum: [true]
         data:
           $ref: "#/components/schemas/DashboardSummary"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    DashboardMovementChartPoint:
+      type: object
+      required: [bucket_start, movement_count]
+      properties:
+        bucket_start:
+          type: string
+          format: date
+          description: Start of bucket in UTC (calendar day, ISO week Monday, or month start)
+        movement_count:
+          type: integer
+          format: int64
+          description: Confirmed movements with updated_at in this bucket
+    DashboardMovementChart:
+      type: object
+      required: [period, points]
+      properties:
+        period:
+          type: string
+          enum: [daily, weekly, monthly]
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardMovementChartPoint"
+    DashboardMovementChartSuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: "#/components/schemas/DashboardMovementChart"
         meta:
           $ref: "#/components/schemas/SuccessMeta"
     Category:

@@ -424,5 +424,6 @@ func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movre
 		return movrepo.Movement{}, err
 	}
 	_ = u.cache.Delete(ctx, cachepkg.KeyDashboardSummary(tid))
+	_ = u.cache.DeletePattern(ctx, cachepkg.PatternDashboardMovementsChart(tid))
 	return u.move.GetByID(ctx, tid, mid)
 }

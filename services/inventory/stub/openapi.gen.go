@@ -32,6 +32,18 @@ const (
 	CategorySuccessEnvelopeSuccessTrue CategorySuccessEnvelopeSuccess = true
 )
 
+// Defines values for DashboardMovementChartPeriod.
+const (
+	DashboardMovementChartPeriodDaily   DashboardMovementChartPeriod = "daily"
+	DashboardMovementChartPeriodMonthly DashboardMovementChartPeriod = "monthly"
+	DashboardMovementChartPeriodWeekly  DashboardMovementChartPeriod = "weekly"
+)
+
+// Defines values for DashboardMovementChartSuccessEnvelopeSuccess.
+const (
+	DashboardMovementChartSuccessEnvelopeSuccessTrue DashboardMovementChartSuccessEnvelopeSuccess = true
+)
+
 // Defines values for DashboardSummarySuccessEnvelopeSuccess.
 const (
 	DashboardSummarySuccessEnvelopeSuccessTrue DashboardSummarySuccessEnvelopeSuccess = true
@@ -79,7 +91,7 @@ const (
 
 // Defines values for WarehouseSuccessEnvelopeSuccess.
 const (
-	WarehouseSuccessEnvelopeSuccessTrue WarehouseSuccessEnvelopeSuccess = true
+	True WarehouseSuccessEnvelopeSuccess = true
 )
 
 // Defines values for Order.
@@ -92,6 +104,13 @@ const (
 const (
 	GetApiV1InventoryCategoriesParamsOrderAsc  GetApiV1InventoryCategoriesParamsOrder = "asc"
 	GetApiV1InventoryCategoriesParamsOrderDesc GetApiV1InventoryCategoriesParamsOrder = "desc"
+)
+
+// Defines values for GetApiV1InventoryDashboardMovementsChartParamsPeriod.
+const (
+	GetApiV1InventoryDashboardMovementsChartParamsPeriodDaily   GetApiV1InventoryDashboardMovementsChartParamsPeriod = "daily"
+	GetApiV1InventoryDashboardMovementsChartParamsPeriodMonthly GetApiV1InventoryDashboardMovementsChartParamsPeriod = "monthly"
+	GetApiV1InventoryDashboardMovementsChartParamsPeriodWeekly  GetApiV1InventoryDashboardMovementsChartParamsPeriod = "weekly"
 )
 
 // Defines values for GetApiV1InventoryMovementsParamsType.
@@ -216,6 +235,36 @@ type CategoryUpdateRequest struct {
 	ParentId    *openapi_types.UUID `json:"parent_id"`
 	SortOrder   *int32              `json:"sort_order,omitempty"`
 }
+
+// DashboardMovementChart defines model for DashboardMovementChart.
+type DashboardMovementChart struct {
+	Period DashboardMovementChartPeriod  `json:"period"`
+	Points []DashboardMovementChartPoint `json:"points"`
+}
+
+// DashboardMovementChartPeriod defines model for DashboardMovementChart.Period.
+type DashboardMovementChartPeriod string
+
+// DashboardMovementChartPoint defines model for DashboardMovementChartPoint.
+type DashboardMovementChartPoint struct {
+	// BucketStart Start of bucket in UTC (calendar day, ISO week Monday, or month start)
+	BucketStart openapi_types.Date `json:"bucket_start"`
+
+	// MovementCount Confirmed movements with updated_at in this bucket
+	MovementCount int64 `json:"movement_count"`
+}
+
+// DashboardMovementChartSuccessEnvelope defines model for DashboardMovementChartSuccessEnvelope.
+type DashboardMovementChartSuccessEnvelope struct {
+	Data DashboardMovementChart `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    *SuccessMeta                                 `json:"meta,omitempty"`
+	Success DashboardMovementChartSuccessEnvelopeSuccess `json:"success"`
+}
+
+// DashboardMovementChartSuccessEnvelopeSuccess defines model for DashboardMovementChartSuccessEnvelope.Success.
+type DashboardMovementChartSuccessEnvelopeSuccess bool
 
 // DashboardSummary defines model for DashboardSummary.
 type DashboardSummary struct {
@@ -569,6 +618,15 @@ type GetApiV1InventoryCategoriesParams struct {
 // GetApiV1InventoryCategoriesParamsOrder defines parameters for GetApiV1InventoryCategories.
 type GetApiV1InventoryCategoriesParamsOrder string
 
+// GetApiV1InventoryDashboardMovementsChartParams defines parameters for GetApiV1InventoryDashboardMovementsChart.
+type GetApiV1InventoryDashboardMovementsChartParams struct {
+	// Period Bucket size (UTC). Daily = last 30 calendar days including today; weekly = 12 ISO weeks (Monday); monthly = 12 calendar months.
+	Period *GetApiV1InventoryDashboardMovementsChartParamsPeriod `form:"period,omitempty" json:"period,omitempty"`
+}
+
+// GetApiV1InventoryDashboardMovementsChartParamsPeriod defines parameters for GetApiV1InventoryDashboardMovementsChart.
+type GetApiV1InventoryDashboardMovementsChartParamsPeriod string
+
 // GetApiV1InventoryMovementsParams defines parameters for GetApiV1InventoryMovements.
 type GetApiV1InventoryMovementsParams struct {
 	Page    *Page                                   `form:"page,omitempty" json:"page,omitempty"`
@@ -697,6 +755,9 @@ type ServerInterface interface {
 	// Update category
 	// (PUT /api/v1/inventory/categories/{categoryId})
 	PutApiV1InventoryCategoriesCategoryId(ctx echo.Context, categoryId CategoryId) error
+	// Confirmed movement counts per UTC bucket (30 days / 12 weeks / 12 months); cache-aside ~30s (§13)
+	// (GET /api/v1/inventory/dashboard/movements/chart)
+	GetApiV1InventoryDashboardMovementsChart(ctx echo.Context, params GetApiV1InventoryDashboardMovementsChartParams) error
 	// Dashboard aggregate counts (tenant); summary is cache-aside in Redis ~30s (ARCHITECTURE §13)
 	// (GET /api/v1/inventory/dashboard/summary)
 	GetApiV1InventoryDashboardSummary(ctx echo.Context) error
@@ -994,6 +1055,26 @@ func (w *ServerInterfaceWrapper) PutApiV1InventoryCategoriesCategoryId(ctx echo.
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PutApiV1InventoryCategoriesCategoryId(ctx, categoryId)
+	return err
+}
+
+// GetApiV1InventoryDashboardMovementsChart converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryDashboardMovementsChart(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetApiV1InventoryDashboardMovementsChartParams
+	// ------------- Optional query parameter "period" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "period", ctx.QueryParams(), &params.Period)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter period: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryDashboardMovementsChart(ctx, params)
 	return err
 }
 
@@ -1569,6 +1650,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.DeleteApiV1InventoryCategoriesCategoryId)
 	router.GET(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.GetApiV1InventoryCategoriesCategoryId)
 	router.PUT(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.PutApiV1InventoryCategoriesCategoryId)
+	router.GET(baseURL+"/api/v1/inventory/dashboard/movements/chart", wrapper.GetApiV1InventoryDashboardMovementsChart)
 	router.GET(baseURL+"/api/v1/inventory/dashboard/summary", wrapper.GetApiV1InventoryDashboardSummary)
 	router.GET(baseURL+"/api/v1/inventory/health", wrapper.GetInventoryHealth)
 	router.GET(baseURL+"/api/v1/inventory/movements", wrapper.GetApiV1InventoryMovements)

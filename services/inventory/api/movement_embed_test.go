@@ -52,3 +52,7 @@ func (movementEmbedNoop) ListAuditLogs(context.Context, audituc.ListAuditLogsInp
 func (movementEmbedNoop) GetDashboardSummary(context.Context) (dashboarduc.Summary, error) {
 	return dashboarduc.Summary{}, nil
 }
+
+func (movementEmbedNoop) GetDashboardMovementsChart(context.Context, string) (dashboarduc.MovementChart, error) {
+	return dashboarduc.MovementChart{}, nil
+}

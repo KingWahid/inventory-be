@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	cachepkg "github.com/KingWahid/inventory/backend/pkg/cache"
+	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	dashrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/dashboard/repository"
 )
@@ -12,9 +13,16 @@ import (
 // Summary is the application-layer dashboard DTO (same shape as repository).
 type Summary = dashrepo.Summary
 
+// MovementChart is cached dashboard movement trend series (§9).
+type MovementChart struct {
+	Period string                        `json:"period"`
+	Points []dashrepo.MovementChartPoint `json:"points"`
+}
+
 // Usecase returns cached dashboard aggregates (TTL §13).
 type Usecase interface {
 	GetDashboardSummary(ctx context.Context) (Summary, error)
+	GetDashboardMovementsChart(ctx context.Context, periodParam string) (MovementChart, error)
 }
 
 type usecase struct {
@@ -50,4 +58,32 @@ func (u *usecase) GetDashboardSummary(ctx context.Context) (Summary, error) {
 		_ = u.cache.Set(ctx, key, b, cachepkg.TTLDashboardSummary)
 	}
 	return s, nil
+}
+
+func (u *usecase) GetDashboardMovementsChart(ctx context.Context, periodParam string) (MovementChart, error) {
+	period, err := dashrepo.NormalizeChartPeriod(periodParam)
+	if err != nil {
+		return MovementChart{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "period must be daily, weekly, or monthly"})
+	}
+	tid, err := commonjwt.TenantIDFromContext(ctx)
+	if err != nil {
+		return MovementChart{}, err
+	}
+	fp := cachepkg.ChartPeriodFingerprint(string(period))
+	key := cachepkg.KeyDashboardMovementsChart(tid, fp)
+	if raw, hit, err := u.cache.Get(ctx, key); err == nil && hit {
+		var mc MovementChart
+		if err := json.Unmarshal(raw, &mc); err == nil {
+			return mc, nil
+		}
+	}
+	points, err := u.repo.GetMovementChart(ctx, tid, period)
+	if err != nil {
+		return MovementChart{}, err
+	}
+	out := MovementChart{Period: string(period), Points: points}
+	if b, err := json.Marshal(out); err == nil {
+		_ = u.cache.Set(ctx, key, b, cachepkg.TTLDashboardChart)
+	}
+	return out, nil
 }

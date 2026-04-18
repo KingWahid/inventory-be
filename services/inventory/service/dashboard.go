@@ -10,3 +10,8 @@ import (
 func (s *InventoryService) GetDashboardSummary(ctx context.Context) (dashboarduc.Summary, error) {
 	return s.dashboard.GetDashboardSummary(ctx)
 }
+
+// GetDashboardMovementsChart returns confirmed movement counts per UTC bucket (§9); cached ~30s (§13).
+func (s *InventoryService) GetDashboardMovementsChart(ctx context.Context, period string) (dashboarduc.MovementChart, error) {
+	return s.dashboard.GetDashboardMovementsChart(ctx, period)
+}

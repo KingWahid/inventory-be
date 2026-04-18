@@ -1,4 +1,5 @@
 // Package repository runs aggregate queries for the tenant dashboard (ARCHITECTURE §9).
+// Heavy aggregates may later move to materialized views; v1 uses indexed SQL + application cache (plan 7.2).
 package repository
 
 import (
@@ -18,6 +19,7 @@ type Summary struct {
 // Repository loads dashboard aggregates.
 type Repository interface {
 	GetDashboardSummary(ctx context.Context, tenantID string) (Summary, error)
+	GetMovementChart(ctx context.Context, tenantID string, period MovementChartPeriod) ([]MovementChartPoint, error)
 }
 
 type repo struct {
