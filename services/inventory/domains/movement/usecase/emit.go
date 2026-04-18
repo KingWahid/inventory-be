@@ -4,29 +4,34 @@ import (
 	"context"
 	"encoding/json"
 
-	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
-	auditrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/repository"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit/logwriter"
 	outboxrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/outbox/repository"
+	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
 )
 
-func (u *usecase) emitAudit(ctx context.Context, tenantID, userID, movementID string, mv movrepo.Movement) error {
-	after, err := json.Marshal(map[string]any{
+func (u *usecase) emitAudit(ctx context.Context, movementID string, mv movrepo.Movement) error {
+	if u.auditLog == nil {
+		return nil
+	}
+	before := map[string]any{
+		"movement_id":      movementID,
+		"status":           mv.Status,
+		"type":             mv.Type,
+		"reference_number": mv.ReferenceNumber,
+	}
+	after := map[string]any{
 		"movement_id":      movementID,
 		"status":           movrepo.StatusConfirmed,
 		"type":             mv.Type,
 		"reference_number": mv.ReferenceNumber,
-	})
-	if err != nil {
-		return err
+		"line_count":       len(mv.Lines),
 	}
-	return u.audit.Insert(ctx, auditrepo.InsertInput{
-		TenantID:   tenantID,
-		UserID:     &userID,
-		Action:     "movement.confirm",
-		Entity:     "movement",
-		EntityID:   movementID,
-		AfterData:  after,
-		BeforeData: nil,
+	return u.auditLog.Log(ctx, logwriter.Params{
+		Action:   "movement.confirm",
+		Entity:   "movement",
+		EntityID: movementID,
+		Before:   before,
+		After:    after,
 	})
 }
 

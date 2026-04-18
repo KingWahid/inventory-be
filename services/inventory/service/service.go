@@ -5,6 +5,7 @@ import (
 
 	catalogrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
+	audituc "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/usecase"
 	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
 	movementuc "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/usecase"
 	warehouserepo "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/repository"
@@ -42,4 +43,6 @@ type Service interface {
 	ListMovements(ctx context.Context, in movementuc.ListMovementsInput) (movementuc.ListMovementsOutput, error)
 	ConfirmMovement(ctx context.Context, movementID string) (movrepo.Movement, error)
 	CancelMovement(ctx context.Context, movementID string) (movrepo.Movement, error)
+
+	ListAuditLogs(ctx context.Context, in audituc.ListAuditLogsInput) (audituc.ListAuditLogsOutput, error)
 }

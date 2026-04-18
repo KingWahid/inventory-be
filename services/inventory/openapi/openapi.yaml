@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Inventory API
-  version: 0.7.1
+  version: 0.7.2
   description: |
     Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
     JSON errors:  via pkg/common/errorcodes. JSON success: via pkg/common/httpresponse (`success`, `data`, `meta.request_id`, list `meta.pagination`).
@@ -631,6 +631,89 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "422":
           $ref: "#/components/responses/UnprocessableEntityError"
+  /api/v1/inventory/audit-logs:
+    get:
+      operationId: getApiV1InventoryAuditLogs
+      tags: [audit]
+      summary: List audit logs (tenant-scoped, §14)
+      security:
+        - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: entity
+          in: query
+          description: Filter by entity name (e.g. category, product, warehouse, movement)
+          schema:
+            type: string
+        - name: entity_id
+          in: query
+          description: Filter by affected entity UUID
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          description: Filter by acting user UUID
+          schema:
+            type: string
+            format: uuid
+        - name: created_from
+          in: query
+          description: Inclusive lower bound (RFC3339 / ISO-8601)
+          schema:
+            type: string
+            format: date-time
+        - name: created_to
+          in: query
+          description: Inclusive upper bound (RFC3339 / ISO-8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Paginated audit entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /api/v1/inventory/audit-logs/{auditEntity}/{auditEntityId}:
+    parameters:
+      - name: auditEntity
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: auditEntityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getApiV1InventoryAuditLogsAuditEntityAuditEntityId
+      tags: [audit]
+      summary: Audit history for one entity instance
+      security:
+        - JwtAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated audit entries for the entity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
 components:
   securitySchemes:
     JwtAuth:
@@ -1267,5 +1350,65 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Movement"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    AuditLog:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - action
+        - entity
+        - entity_id
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+        entity:
+          type: string
+        entity_id:
+          type: string
+          format: uuid
+        before_data:
+          type: object
+          nullable: true
+          additionalProperties: true
+        after_data:
+          type: object
+          nullable: true
+          additionalProperties: true
+        ip_address:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+        request_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    AuditLogListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
         meta:
           $ref: "#/components/schemas/SuccessMeta"

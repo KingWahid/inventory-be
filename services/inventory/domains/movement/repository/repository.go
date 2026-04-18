@@ -18,7 +18,8 @@ import (
 type Repository interface {
 	Ping() error
 	UserBelongsToTenant(ctx context.Context, tenantID, userID string) (bool, error)
-	Create(ctx context.Context, in CreateMovementInput) (Movement, error)
+	// Create inserts a draft movement; replay is true when an idempotent replay returned an existing row (no new insert).
+	Create(ctx context.Context, in CreateMovementInput) (Movement, bool /* replay */, error)
 	GetByTenantAndIdempotencyKey(ctx context.Context, tenantID, idempotencyKey string) (Movement, error)
 	GetByID(ctx context.Context, tenantID, movementID string) (Movement, error)
 	GetByIDForUpdate(ctx context.Context, tenantID, movementID string) (Movement, error)
@@ -89,7 +90,7 @@ func (r *repository) UserBelongsToTenant(ctx context.Context, tenantID, userID s
 	return n > 0, nil
 }
 
-func (r *repository) Create(ctx context.Context, in CreateMovementInput) (Movement, error) {
+func (r *repository) Create(ctx context.Context, in CreateMovementInput) (Movement, bool, error) {
 	db := transaction.GetDB(ctx, r.db).WithContext(ctx)
 	mid := uuid.New().String()
 	now := time.Now().UTC()
@@ -119,7 +120,7 @@ func (r *repository) Create(ctx context.Context, in CreateMovementInput) (Moveme
 	}
 	if err := db.Create(&m).Error; err != nil {
 		if !isDuplicateErr(err) {
-			return Movement{}, err
+			return Movement{}, false, err
 		}
 		return r.handleCreateDuplicate(ctx, in, keyTrim, hashTrim)
 	}
@@ -134,10 +135,11 @@ func (r *repository) Create(ctx context.Context, in CreateMovementInput) (Moveme
 			CreatedAt:  now,
 		}
 		if err := db.Create(&lr).Error; err != nil {
-			return Movement{}, err
+			return Movement{}, false, err
 		}
 	}
-	return r.GetByID(ctx, in.TenantID, mid)
+	mv, err := r.GetByID(ctx, in.TenantID, mid)
+	return mv, false, err
 }
 
 func (r *repository) GetByTenantAndIdempotencyKey(ctx context.Context, tenantID, idempotencyKey string) (Movement, error) {
@@ -158,21 +160,21 @@ func (r *repository) GetByTenantAndIdempotencyKey(ctx context.Context, tenantID,
 	return r.GetByID(ctx, tid, row.ID)
 }
 
-func (r *repository) handleCreateDuplicate(ctx context.Context, in CreateMovementInput, keyTrim, hashTrim string) (Movement, error) {
+func (r *repository) handleCreateDuplicate(ctx context.Context, in CreateMovementInput, keyTrim, hashTrim string) (Movement, bool, error) {
 	tid := strings.TrimSpace(in.TenantID)
 	if keyTrim != "" {
 		existing, err := r.GetByTenantAndIdempotencyKey(ctx, tid, keyTrim)
 		if err == nil {
 			if idempotencyHashesMatch(existing.IdempotencyRequestHash, hashTrim) {
-				return existing, nil
+				return existing, true, nil
 			}
-			return Movement{}, errorcodes.ErrIdempotency
+			return Movement{}, false, errorcodes.ErrIdempotency
 		}
 		if !errors.Is(err, errorcodes.ErrNotFound) {
-			return Movement{}, err
+			return Movement{}, false, err
 		}
 	}
-	return Movement{}, errorcodes.ErrConflict.WithDetails(map[string]any{"message": "reference_number already exists"})
+	return Movement{}, false, errorcodes.ErrConflict.WithDetails(map[string]any{"message": "reference_number already exists"})
 }
 
 func idempotencyHashesMatch(stored *string, want string) bool {

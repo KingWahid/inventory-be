@@ -7,6 +7,7 @@ import (
 
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit/logwriter"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
 )
 
@@ -147,7 +148,7 @@ func (u *usecase) CreateProduct(ctx context.Context, in CreateProductInput) (rep
 		return repository.Product{}, err
 	}
 
-	return u.repo.CreateProduct(ctx, tid, repository.CreateProductInput{
+	p, err := u.repo.CreateProduct(ctx, tid, repository.CreateProductInput{
 		CategoryID:   catID,
 		SKU:          sku,
 		Name:         name,
@@ -157,6 +158,19 @@ func (u *usecase) CreateProduct(ctx context.Context, in CreateProductInput) (rep
 		ReorderLevel: in.ReorderLevel,
 		Metadata:     meta,
 	})
+	if err != nil {
+		return repository.Product{}, err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "product.create",
+			Entity:   "product",
+			EntityID: p.ID,
+			Before:   nil,
+			After:    toAuditMap(p),
+		})
+	}
+	return p, nil
 }
 
 func (u *usecase) UpdateProduct(ctx context.Context, productID string, in UpdateProductInput) (repository.Product, error) {
@@ -198,6 +212,11 @@ func (u *usecase) UpdateProduct(ctx context.Context, productID string, in Update
 		}
 	}
 
+	old, err := u.repo.GetProductByID(ctx, tid, id)
+	if err != nil {
+		return repository.Product{}, err
+	}
+
 	repoIn := repository.UpdateProductInput{
 		SKU:          in.SKU,
 		Name:         in.Name,
@@ -215,7 +234,20 @@ func (u *usecase) UpdateProduct(ctx context.Context, productID string, in Update
 		repoIn.Metadata = &meta
 	}
 
-	return u.repo.UpdateProduct(ctx, tid, id, repoIn)
+	p, err := u.repo.UpdateProduct(ctx, tid, id, repoIn)
+	if err != nil {
+		return repository.Product{}, err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "product.update",
+			Entity:   "product",
+			EntityID: id,
+			Before:   toAuditMap(old),
+			After:    toAuditMap(p),
+		})
+	}
+	return p, nil
 }
 
 func (u *usecase) DeleteProduct(ctx context.Context, productID string) error {
@@ -228,7 +260,8 @@ func (u *usecase) DeleteProduct(ctx context.Context, productID string) error {
 		return errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "product id is required"})
 	}
 
-	if _, err := u.repo.GetProductByID(ctx, tid, id); err != nil {
+	old, err := u.repo.GetProductByID(ctx, tid, id)
+	if err != nil {
 		return err
 	}
 
@@ -240,7 +273,19 @@ func (u *usecase) DeleteProduct(ctx context.Context, productID string) error {
 		return errorcodes.ErrProductHasStock.WithDetails(map[string]any{"product_id": id})
 	}
 
-	return u.repo.SoftDeleteProduct(ctx, tid, id)
+	if err := u.repo.SoftDeleteProduct(ctx, tid, id); err != nil {
+		return err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "product.delete",
+			Entity:   "product",
+			EntityID: id,
+			Before:   toAuditMap(old),
+			After:    map[string]any{"deleted": true},
+		})
+	}
+	return nil
 }
 
 func (u *usecase) RestoreProduct(ctx context.Context, productID string) (repository.Product, error) {
@@ -253,5 +298,18 @@ func (u *usecase) RestoreProduct(ctx context.Context, productID string) (reposit
 		return repository.Product{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "product id is required"})
 	}
 
-	return u.repo.RestoreProduct(ctx, tid, id)
+	p, err := u.repo.RestoreProduct(ctx, tid, id)
+	if err != nil {
+		return repository.Product{}, err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "product.restore",
+			Entity:   "product",
+			EntityID: id,
+			Before:   map[string]any{"product_id": id, "deleted": true},
+			After:    toAuditMap(p),
+		})
+	}
+	return p, nil
 }

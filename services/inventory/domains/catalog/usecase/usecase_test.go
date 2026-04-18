@@ -106,7 +106,7 @@ func ctxWithTenant(tenant string) context.Context {
 func TestDeleteCategory_RejectsWhenActiveProducts(t *testing.T) {
 	catID := uuid.New().String()
 	fr := &fakeRepo{count: 3}
-	u := New(fr)
+	u := New(fr, nil)
 	err := u.DeleteCategory(ctxWithTenant("tenant-a"), catID)
 	if !errors.Is(err, errorcodes.ErrCategoryHasActiveProducts) {
 		t.Fatalf("want ErrCategoryHasActiveProducts got %v", err)
@@ -119,7 +119,7 @@ func TestDeleteCategory_RejectsWhenActiveProducts(t *testing.T) {
 func TestDeleteCategory_SoftDeletesWhenNoProducts(t *testing.T) {
 	catID := uuid.New().String()
 	fr := &fakeRepo{count: 0}
-	u := New(fr)
+	u := New(fr, nil)
 	if err := u.DeleteCategory(ctxWithTenant("tenant-a"), catID); err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestDeleteCategory_SoftDeletesWhenNoProducts(t *testing.T) {
 }
 
 func TestDeleteCategory_TenantMissing(t *testing.T) {
-	u := New(&fakeRepo{})
+	u := New(&fakeRepo{}, nil)
 	err := u.DeleteCategory(context.Background(), uuid.New().String())
 	if !errors.Is(err, errorcodes.ErrTenantContextMissing) {
 		t.Fatalf("want ErrTenantContextMissing got %v", err)
@@ -139,7 +139,7 @@ func TestDeleteCategory_TenantMissing(t *testing.T) {
 func TestDeleteProduct_RejectsWhenStock(t *testing.T) {
 	pid := uuid.New().String()
 	fr := &fakeRepo{hasStock: true}
-	u := New(fr)
+	u := New(fr, nil)
 	err := u.DeleteProduct(ctxWithTenant("tenant-a"), pid)
 	if !errors.Is(err, errorcodes.ErrProductHasStock) {
 		t.Fatalf("want ErrProductHasStock got %v", err)
@@ -152,7 +152,7 @@ func TestDeleteProduct_RejectsWhenStock(t *testing.T) {
 func TestDeleteProduct_SoftDeletesWhenNoStock(t *testing.T) {
 	pid := uuid.New().String()
 	fr := &fakeRepo{hasStock: false}
-	u := New(fr)
+	u := New(fr, nil)
 	if err := u.DeleteProduct(ctxWithTenant("tenant-a"), pid); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestDeleteProduct_SoftDeletesWhenNoStock(t *testing.T) {
 }
 
 func TestDeleteProduct_TenantMissing(t *testing.T) {
-	u := New(&fakeRepo{})
+	u := New(&fakeRepo{}, nil)
 	err := u.DeleteProduct(context.Background(), uuid.New().String())
 	if !errors.Is(err, errorcodes.ErrTenantContextMissing) {
 		t.Fatalf("want ErrTenantContextMissing got %v", err)

@@ -17,6 +17,11 @@ const (
 	JwtAuthScopes = "JwtAuth.Scopes"
 )
 
+// Defines values for AuditLogListResponseSuccess.
+const (
+	AuditLogListResponseSuccessTrue AuditLogListResponseSuccess = true
+)
+
 // Defines values for CategoryListResponseSuccess.
 const (
 	CategoryListResponseSuccessTrue CategoryListResponseSuccess = true
@@ -69,7 +74,7 @@ const (
 
 // Defines values for WarehouseSuccessEnvelopeSuccess.
 const (
-	WarehouseSuccessEnvelopeSuccessTrue WarehouseSuccessEnvelopeSuccess = true
+	True WarehouseSuccessEnvelopeSuccess = true
 )
 
 // Defines values for Order.
@@ -125,6 +130,34 @@ type AdjustmentMovementCreateRequest struct {
 	ReferenceNumber        string               `json:"reference_number"`
 	SourceWarehouseId      *openapi_types.UUID  `json:"source_warehouse_id"`
 }
+
+// AuditLog defines model for AuditLog.
+type AuditLog struct {
+	Action     string                  `json:"action"`
+	AfterData  *map[string]interface{} `json:"after_data"`
+	BeforeData *map[string]interface{} `json:"before_data"`
+	CreatedAt  time.Time               `json:"created_at"`
+	Entity     string                  `json:"entity"`
+	EntityId   openapi_types.UUID      `json:"entity_id"`
+	Id         openapi_types.UUID      `json:"id"`
+	IpAddress  *string                 `json:"ip_address"`
+	RequestId  *string                 `json:"request_id"`
+	TenantId   openapi_types.UUID      `json:"tenant_id"`
+	UserAgent  *string                 `json:"user_agent"`
+	UserId     *openapi_types.UUID     `json:"user_id"`
+}
+
+// AuditLogListResponse defines model for AuditLogListResponse.
+type AuditLogListResponse struct {
+	Data []AuditLog `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    SuccessMeta                 `json:"meta"`
+	Success AuditLogListResponseSuccess `json:"success"`
+}
+
+// AuditLogListResponseSuccess defines model for AuditLogListResponse.Success.
+type AuditLogListResponseSuccess bool
 
 // Category defines model for Category.
 type Category struct {
@@ -464,6 +497,34 @@ type UnauthorizedError = ErrorResponse
 // UnprocessableEntityError defines model for UnprocessableEntityError.
 type UnprocessableEntityError = ErrorResponse
 
+// GetApiV1InventoryAuditLogsParams defines parameters for GetApiV1InventoryAuditLogs.
+type GetApiV1InventoryAuditLogsParams struct {
+	Page    *Page    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPage `form:"per_page,omitempty" json:"per_page,omitempty"`
+
+	// Entity Filter by entity name (e.g. category, product, warehouse, movement)
+	Entity *string `form:"entity,omitempty" json:"entity,omitempty"`
+
+	// EntityId Filter by affected entity UUID
+	EntityId *openapi_types.UUID `form:"entity_id,omitempty" json:"entity_id,omitempty"`
+	Action   *string             `form:"action,omitempty" json:"action,omitempty"`
+
+	// UserId Filter by acting user UUID
+	UserId *openapi_types.UUID `form:"user_id,omitempty" json:"user_id,omitempty"`
+
+	// CreatedFrom Inclusive lower bound (RFC3339 / ISO-8601)
+	CreatedFrom *time.Time `form:"created_from,omitempty" json:"created_from,omitempty"`
+
+	// CreatedTo Inclusive upper bound (RFC3339 / ISO-8601)
+	CreatedTo *time.Time `form:"created_to,omitempty" json:"created_to,omitempty"`
+}
+
+// GetApiV1InventoryAuditLogsAuditEntityAuditEntityIdParams defines parameters for GetApiV1InventoryAuditLogsAuditEntityAuditEntityId.
+type GetApiV1InventoryAuditLogsAuditEntityAuditEntityIdParams struct {
+	Page    *Page    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPage `form:"per_page,omitempty" json:"per_page,omitempty"`
+}
+
 // GetApiV1InventoryCategoriesParams defines parameters for GetApiV1InventoryCategories.
 type GetApiV1InventoryCategoriesParams struct {
 	Page    *Page                                   `form:"page,omitempty" json:"page,omitempty"`
@@ -583,6 +644,12 @@ type PutApiV1InventoryWarehousesWarehouseIdJSONRequestBody = WarehouseUpdateRequ
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// List audit logs (tenant-scoped, §14)
+	// (GET /api/v1/inventory/audit-logs)
+	GetApiV1InventoryAuditLogs(ctx echo.Context, params GetApiV1InventoryAuditLogsParams) error
+	// Audit history for one entity instance
+	// (GET /api/v1/inventory/audit-logs/{auditEntity}/{auditEntityId})
+	GetApiV1InventoryAuditLogsAuditEntityAuditEntityId(ctx echo.Context, auditEntity string, auditEntityId openapi_types.UUID, params GetApiV1InventoryAuditLogsAuditEntityAuditEntityIdParams) error
 	// List categories
 	// (GET /api/v1/inventory/categories)
 	GetApiV1InventoryCategories(ctx echo.Context, params GetApiV1InventoryCategoriesParams) error
@@ -669,6 +736,117 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetApiV1InventoryAuditLogs converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryAuditLogs(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetApiV1InventoryAuditLogsParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "per_page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "per_page", ctx.QueryParams(), &params.PerPage)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter per_page: %s", err))
+	}
+
+	// ------------- Optional query parameter "entity" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "entity", ctx.QueryParams(), &params.Entity)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter entity: %s", err))
+	}
+
+	// ------------- Optional query parameter "entity_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "entity_id", ctx.QueryParams(), &params.EntityId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter entity_id: %s", err))
+	}
+
+	// ------------- Optional query parameter "action" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "action", ctx.QueryParams(), &params.Action)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter action: %s", err))
+	}
+
+	// ------------- Optional query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "user_id", ctx.QueryParams(), &params.UserId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// ------------- Optional query parameter "created_from" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "created_from", ctx.QueryParams(), &params.CreatedFrom)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter created_from: %s", err))
+	}
+
+	// ------------- Optional query parameter "created_to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "created_to", ctx.QueryParams(), &params.CreatedTo)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter created_to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryAuditLogs(ctx, params)
+	return err
+}
+
+// GetApiV1InventoryAuditLogsAuditEntityAuditEntityId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryAuditLogsAuditEntityAuditEntityId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "auditEntity" -------------
+	var auditEntity string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "auditEntity", ctx.Param("auditEntity"), &auditEntity, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter auditEntity: %s", err))
+	}
+
+	// ------------- Path parameter "auditEntityId" -------------
+	var auditEntityId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "auditEntityId", ctx.Param("auditEntityId"), &auditEntityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter auditEntityId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetApiV1InventoryAuditLogsAuditEntityAuditEntityIdParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "per_page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "per_page", ctx.QueryParams(), &params.PerPage)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter per_page: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryAuditLogsAuditEntityAuditEntityId(ctx, auditEntity, auditEntityId, params)
+	return err
 }
 
 // GetApiV1InventoryCategories converts echo context to params.
@@ -1338,6 +1516,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/api/v1/inventory/audit-logs", wrapper.GetApiV1InventoryAuditLogs)
+	router.GET(baseURL+"/api/v1/inventory/audit-logs/:auditEntity/:auditEntityId", wrapper.GetApiV1InventoryAuditLogsAuditEntityAuditEntityId)
 	router.GET(baseURL+"/api/v1/inventory/categories", wrapper.GetApiV1InventoryCategories)
 	router.POST(baseURL+"/api/v1/inventory/categories", wrapper.PostApiV1InventoryCategories)
 	router.DELETE(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.DeleteApiV1InventoryCategoriesCategoryId)

@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
+	"github.com/KingWahid/inventory/backend/pkg/common/requestmeta"
 	"github.com/KingWahid/inventory/backend/services/inventory/config"
 )
 
@@ -31,6 +32,7 @@ func NewEcho(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger, jwtSvc *commo
 	e.Use(middleware.Recover())
 	e.Use(requestLoggerMiddleware(log))
 	e.Use(commonjwt.RequireBearerAccessJWT(jwtSvc, InventoryPublicPaths))
+	e.Use(requestmeta.EchoMiddleware())
 
 	addr := ":" + cfg.AppPort
 	lc.Append(fx.Hook{

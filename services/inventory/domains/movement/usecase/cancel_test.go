@@ -23,8 +23,8 @@ func (s *stubMovRepo) UserBelongsToTenant(context.Context, string, string) (bool
 	return true, nil
 }
 
-func (s *stubMovRepo) Create(context.Context, movrepo.CreateMovementInput) (movrepo.Movement, error) {
-	return movrepo.Movement{}, errorcodes.ErrInternal
+func (s *stubMovRepo) Create(context.Context, movrepo.CreateMovementInput) (movrepo.Movement, bool, error) {
+	return movrepo.Movement{}, false, errorcodes.ErrInternal
 }
 
 func (s *stubMovRepo) GetByTenantAndIdempotencyKey(context.Context, string, string) (movrepo.Movement, error) {

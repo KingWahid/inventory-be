@@ -1,10 +1,15 @@
 package usecase
 
-import "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/repository"
+import (
+	"context"
+
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit/repository"
+)
 
 // Usecase defines application logic contract for audit domain.
 type Usecase interface {
 	Ping() error
+	ListAuditLogs(ctx context.Context, in ListAuditLogsInput) (ListAuditLogsOutput, error)
 }
 
 type usecase struct {

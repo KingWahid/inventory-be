@@ -8,8 +8,8 @@ import (
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
 	"github.com/KingWahid/inventory/backend/pkg/database/transaction"
+	flowaudit "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/logwriter"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
-	auditrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/repository"
 	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
 	outboxrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/outbox/repository"
 	stockrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/stock/repository"
@@ -27,11 +27,11 @@ type LineInput struct {
 // IdempotencyKey is the HTTP Idempotency-Key header (required, §9).
 // RequestHashSHA256Hex is SHA-256 hex of the raw JSON body for replay detection.
 type CreateMovementBase struct {
-	ReferenceNumber       string
-	Notes                 *string
-	Lines                 []LineInput
-	IdempotencyKey        string
-	RequestHashSHA256Hex  string
+	ReferenceNumber      string
+	Notes                *string
+	Lines                []LineInput
+	IdempotencyKey       string
+	RequestHashSHA256Hex string
 }
 
 // Usecase defines movement application logic.
@@ -67,13 +67,13 @@ type ListMovementsOutput struct {
 }
 
 type usecase struct {
-	move    movrepo.Repository
-	stock   stockrepo.Repository
-	wh      warehouseuc.Usecase
-	catalog cataloguc.Usecase
-	audit   auditrepo.Repository
-	outbox  outboxrepo.Repository
-	tx      transaction.Manager
+	move     movrepo.Repository
+	stock    stockrepo.Repository
+	wh       warehouseuc.Usecase
+	catalog  cataloguc.Usecase
+	auditLog *flowaudit.Writer
+	outbox   outboxrepo.Repository
+	tx       transaction.Manager
 }
 
 // New creates movement usecase.
@@ -82,13 +82,13 @@ func New(
 	stock stockrepo.Repository,
 	wh warehouseuc.Usecase,
 	catalog cataloguc.Usecase,
-	audit auditrepo.Repository,
+	auditLog *flowaudit.Writer,
 	outbox outboxrepo.Repository,
 	tx transaction.Manager,
 ) Usecase {
 	return &usecase{
 		move: move, stock: stock, wh: wh, catalog: catalog,
-		audit: audit, outbox: outbox, tx: tx,
+		auditLog: auditLog, outbox: outbox, tx: tx,
 	}
 }
 
@@ -206,7 +206,7 @@ func (u *usecase) createDraft(ctx context.Context, tenantID, userID, typ string,
 		})
 	}
 
-	return u.move.Create(ctx, movrepo.CreateMovementInput{
+	mv, replay, err := u.move.Create(ctx, movrepo.CreateMovementInput{
 		TenantID:               tenantID,
 		Type:                   typ,
 		ReferenceNumber:        ref,
@@ -218,6 +218,19 @@ func (u *usecase) createDraft(ctx context.Context, tenantID, userID, typ string,
 		IdempotencyRequestHash: strings.TrimSpace(strings.ToLower(in.RequestHashSHA256Hex)),
 		Lines:                  lineIn,
 	})
+	if err != nil {
+		return movrepo.Movement{}, err
+	}
+	if u.auditLog != nil && !replay {
+		_ = u.auditLog.Log(ctx, flowaudit.Params{
+			Action:   "movement.create",
+			Entity:   "movement",
+			EntityID: mv.ID,
+			Before:   nil,
+			After:    movementCreateAuditSnapshot(mv),
+		})
+	}
+	return mv, nil
 }
 
 func validateIdempotencyCreate(in CreateMovementBase) error {
@@ -351,18 +364,28 @@ func (u *usecase) CancelMovement(ctx context.Context, movementID string) (movrep
 	if m.Status != movrepo.StatusDraft {
 		return movrepo.Movement{}, errorcodes.ErrMovementDraft
 	}
+	before := movementCreateAuditSnapshot(m)
 	if err := u.move.UpdateStatus(ctx, tid, mid, movrepo.StatusDraft, movrepo.StatusCancelled); err != nil {
 		return movrepo.Movement{}, err
 	}
-	return u.move.GetByID(ctx, tid, mid)
+	out, err := u.move.GetByID(ctx, tid, mid)
+	if err != nil {
+		return movrepo.Movement{}, err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, flowaudit.Params{
+			Action:   "movement.cancel",
+			Entity:   "movement",
+			EntityID: mid,
+			Before:   before,
+			After:    movementCreateAuditSnapshot(out),
+		})
+	}
+	return out, nil
 }
 
 func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movrepo.Movement, error) {
 	tid, err := tenantFromCtx(ctx)
-	if err != nil {
-		return movrepo.Movement{}, err
-	}
-	userID, err := commonjwt.SubjectFromContext(ctx)
 	if err != nil {
 		return movrepo.Movement{}, err
 	}
@@ -386,7 +409,7 @@ func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movre
 		if err := u.move.UpdateStatus(txCtx, tid, mid, movrepo.StatusDraft, movrepo.StatusConfirmed); err != nil {
 			return err
 		}
-		if err := u.emitAudit(txCtx, tid, userID, mid, mv); err != nil {
+		if err := u.emitAudit(txCtx, mid, mv); err != nil {
 			return err
 		}
 		return u.emitOutbox(txCtx, tid, mid, mv, changes)
@@ -396,4 +419,3 @@ func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movre
 	}
 	return u.move.GetByID(ctx, tid, mid)
 }
-

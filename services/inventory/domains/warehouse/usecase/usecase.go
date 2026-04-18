@@ -7,6 +7,7 @@ import (
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit/logwriter"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/repository"
 )
 
@@ -54,12 +55,13 @@ type UpdateWarehouseInput struct {
 }
 
 type usecase struct {
-	repo repository.Repository
+	repo     repository.Repository
+	auditLog *logwriter.Writer
 }
 
 // New creates warehouse usecase implementation.
-func New(repo repository.Repository) Usecase {
-	return &usecase{repo: repo}
+func New(repo repository.Repository, audit *logwriter.Writer) Usecase {
+	return &usecase{repo: repo, auditLog: audit}
 }
 
 func (u *usecase) Ping() error {
@@ -140,12 +142,25 @@ func (u *usecase) CreateWarehouse(ctx context.Context, in CreateWarehouseInput) 
 		return repository.Warehouse{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "name is required"})
 	}
 
-	return u.repo.Create(ctx, tid, repository.CreateInput{
+	w, err := u.repo.Create(ctx, tid, repository.CreateInput{
 		Code:     code,
 		Name:     name,
 		Address:  in.Address,
 		IsActive: in.IsActive,
 	})
+	if err != nil {
+		return repository.Warehouse{}, err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "warehouse.create",
+			Entity:   "warehouse",
+			EntityID: w.ID,
+			Before:   nil,
+			After:    toAuditMap(w),
+		})
+	}
+	return w, nil
 }
 
 func (u *usecase) UpdateWarehouse(ctx context.Context, warehouseID string, in UpdateWarehouseInput) (repository.Warehouse, error) {
@@ -165,12 +180,30 @@ func (u *usecase) UpdateWarehouse(ctx context.Context, warehouseID string, in Up
 		return repository.Warehouse{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "name cannot be empty"})
 	}
 
-	return u.repo.Update(ctx, tid, id, repository.UpdateInput{
+	old, err := u.repo.GetByID(ctx, tid, id)
+	if err != nil {
+		return repository.Warehouse{}, err
+	}
+
+	w, err := u.repo.Update(ctx, tid, id, repository.UpdateInput{
 		Code:     in.Code,
 		Name:     in.Name,
 		Address:  in.Address,
 		IsActive: in.IsActive,
 	})
+	if err != nil {
+		return repository.Warehouse{}, err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "warehouse.update",
+			Entity:   "warehouse",
+			EntityID: id,
+			Before:   toAuditMap(old),
+			After:    toAuditMap(w),
+		})
+	}
+	return w, nil
 }
 
 func (u *usecase) DeleteWarehouse(ctx context.Context, warehouseID string) error {
@@ -183,7 +216,8 @@ func (u *usecase) DeleteWarehouse(ctx context.Context, warehouseID string) error
 		return errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "warehouse id is required"})
 	}
 
-	if _, err := u.repo.GetByID(ctx, tid, id); err != nil {
+	old, err := u.repo.GetByID(ctx, tid, id)
+	if err != nil {
 		return err
 	}
 
@@ -195,5 +229,17 @@ func (u *usecase) DeleteWarehouse(ctx context.Context, warehouseID string) error
 		return errorcodes.ErrWarehouseStock.WithDetails(map[string]any{"warehouse_id": id})
 	}
 
-	return u.repo.SoftDelete(ctx, tid, id)
+	if err := u.repo.SoftDelete(ctx, tid, id); err != nil {
+		return err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "warehouse.delete",
+			Entity:   "warehouse",
+			EntityID: id,
+			Before:   toAuditMap(old),
+			After:    map[string]any{"deleted": true},
+		})
+	}
+	return nil
 }

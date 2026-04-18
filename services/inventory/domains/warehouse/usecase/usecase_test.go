@@ -64,7 +64,7 @@ func ctxTenant(tenant string) context.Context {
 func TestDeleteWarehouse_RejectsWhenStock(t *testing.T) {
 	wid := uuid.New().String()
 	fr := &fakeRepo{hasStock: true}
-	u := New(fr)
+	u := New(fr, nil)
 	err := u.DeleteWarehouse(ctxTenant("tenant-a"), wid)
 	if !errors.Is(err, errorcodes.ErrWarehouseStock) {
 		t.Fatalf("want ErrWarehouseStock got %v", err)
@@ -77,7 +77,7 @@ func TestDeleteWarehouse_RejectsWhenStock(t *testing.T) {
 func TestDeleteWarehouse_SoftDeletesWhenNoStock(t *testing.T) {
 	wid := uuid.New().String()
 	fr := &fakeRepo{hasStock: false}
-	u := New(fr)
+	u := New(fr, nil)
 	if err := u.DeleteWarehouse(ctxTenant("tenant-a"), wid); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestDeleteWarehouse_SoftDeletesWhenNoStock(t *testing.T) {
 }
 
 func TestDeleteWarehouse_TenantMissing(t *testing.T) {
-	u := New(&fakeRepo{})
+	u := New(&fakeRepo{}, nil)
 	err := u.DeleteWarehouse(context.Background(), uuid.New().String())
 	if !errors.Is(err, errorcodes.ErrTenantContextMissing) {
 		t.Fatalf("want ErrTenantContextMissing got %v", err)

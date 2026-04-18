@@ -8,6 +8,7 @@ import (
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit/logwriter"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
 )
 
@@ -104,12 +105,13 @@ type UpdateProductInput struct {
 }
 
 type usecase struct {
-	repo repository.Repository
+	repo     repository.Repository
+	auditLog *logwriter.Writer
 }
 
 // New creates catalog usecase implementation.
-func New(repo repository.Repository) Usecase {
-	return &usecase{repo: repo}
+func New(repo repository.Repository, audit *logwriter.Writer) Usecase {
+	return &usecase{repo: repo, auditLog: audit}
 }
 
 func (u *usecase) Ping() error {
@@ -193,12 +195,25 @@ func (u *usecase) CreateCategory(ctx context.Context, in CreateCategoryInput) (r
 		}
 	}
 
-	return u.repo.Create(ctx, tid, repository.CreateInput{
+	cat, err := u.repo.Create(ctx, tid, repository.CreateInput{
 		Name:        name,
 		Description: in.Description,
 		ParentID:    normalizeParentID(in.ParentID),
 		SortOrder:   in.SortOrder,
 	})
+	if err != nil {
+		return repository.Category{}, err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "category.create",
+			Entity:   "category",
+			EntityID: cat.ID,
+			Before:   nil,
+			After:    toAuditMap(cat),
+		})
+	}
+	return cat, nil
 }
 
 func (u *usecase) UpdateCategory(ctx context.Context, categoryID string, in UpdateCategoryInput) (repository.Category, error) {
@@ -227,6 +242,11 @@ func (u *usecase) UpdateCategory(ctx context.Context, categoryID string, in Upda
 		return repository.Category{}, errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "name cannot be empty"})
 	}
 
+	old, err := u.repo.GetByID(ctx, tid, id)
+	if err != nil {
+		return repository.Category{}, err
+	}
+
 	repoIn := repository.UpdateInput{
 		Name:        in.Name,
 		Description: in.Description,
@@ -237,7 +257,20 @@ func (u *usecase) UpdateCategory(ctx context.Context, categoryID string, in Upda
 		repoIn.ParentID = pid
 	}
 
-	return u.repo.Update(ctx, tid, id, repoIn)
+	cat, err := u.repo.Update(ctx, tid, id, repoIn)
+	if err != nil {
+		return repository.Category{}, err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "category.update",
+			Entity:   "category",
+			EntityID: id,
+			Before:   toAuditMap(old),
+			After:    toAuditMap(cat),
+		})
+	}
+	return cat, nil
 }
 
 func normalizeParentID(p *string) *string {
@@ -261,7 +294,8 @@ func (u *usecase) DeleteCategory(ctx context.Context, categoryID string) error {
 		return errorcodes.ErrValidationError.WithDetails(map[string]any{"message": "category id is required"})
 	}
 
-	if _, err := u.repo.GetByID(ctx, tid, id); err != nil {
+	old, err := u.repo.GetByID(ctx, tid, id)
+	if err != nil {
 		return err
 	}
 
@@ -273,5 +307,17 @@ func (u *usecase) DeleteCategory(ctx context.Context, categoryID string) error {
 		return errorcodes.ErrCategoryHasActiveProducts.WithDetails(map[string]any{"category_id": id, "active_products": n})
 	}
 
-	return u.repo.SoftDelete(ctx, tid, id)
+	if err := u.repo.SoftDelete(ctx, tid, id); err != nil {
+		return err
+	}
+	if u.auditLog != nil {
+		_ = u.auditLog.Log(ctx, logwriter.Params{
+			Action:   "category.delete",
+			Entity:   "category",
+			EntityID: id,
+			Before:   toAuditMap(old),
+			After:    map[string]any{"deleted": true},
+		})
+	}
+	return nil
 }
