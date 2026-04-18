@@ -11,6 +11,7 @@ import (
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/catalog"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/movement"
+	"github.com/KingWahid/inventory/backend/services/inventory/domains/outbox"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/stock"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse"
 	"github.com/KingWahid/inventory/backend/services/inventory/service"
@@ -39,6 +40,7 @@ var Module = uberfx.Options(
 	audit.Module,
 	catalog.Module,
 	movement.Module,
+	outbox.Module,
 	stock.Module,
 	warehouse.Module,
 	service.Module,

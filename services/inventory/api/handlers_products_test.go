@@ -19,7 +19,9 @@ import (
 	"github.com/KingWahid/inventory/backend/services/inventory/stub"
 )
 
-type productDelSvc struct{}
+type productDelSvc struct {
+	movementSvcNoop
+}
 
 func (productDelSvc) PingDB(context.Context) error { return nil }
 

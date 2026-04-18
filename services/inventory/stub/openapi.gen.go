@@ -27,6 +27,31 @@ const (
 	CategorySuccessEnvelopeSuccessTrue CategorySuccessEnvelopeSuccess = true
 )
 
+// Defines values for MovementStatus.
+const (
+	MovementStatusCancelled MovementStatus = "cancelled"
+	MovementStatusConfirmed MovementStatus = "confirmed"
+	MovementStatusDraft     MovementStatus = "draft"
+)
+
+// Defines values for MovementType.
+const (
+	MovementTypeAdjustment MovementType = "adjustment"
+	MovementTypeInbound    MovementType = "inbound"
+	MovementTypeOutbound   MovementType = "outbound"
+	MovementTypeTransfer   MovementType = "transfer"
+)
+
+// Defines values for MovementListResponseSuccess.
+const (
+	MovementListResponseSuccessTrue MovementListResponseSuccess = true
+)
+
+// Defines values for MovementSuccessEnvelopeSuccess.
+const (
+	MovementSuccessEnvelopeSuccessTrue MovementSuccessEnvelopeSuccess = true
+)
+
 // Defines values for ProductListResponseSuccess.
 const (
 	ProductListResponseSuccessTrue ProductListResponseSuccess = true
@@ -59,6 +84,27 @@ const (
 	GetApiV1InventoryCategoriesParamsOrderDesc GetApiV1InventoryCategoriesParamsOrder = "desc"
 )
 
+// Defines values for GetApiV1InventoryMovementsParamsType.
+const (
+	GetApiV1InventoryMovementsParamsTypeAdjustment GetApiV1InventoryMovementsParamsType = "adjustment"
+	GetApiV1InventoryMovementsParamsTypeInbound    GetApiV1InventoryMovementsParamsType = "inbound"
+	GetApiV1InventoryMovementsParamsTypeOutbound   GetApiV1InventoryMovementsParamsType = "outbound"
+	GetApiV1InventoryMovementsParamsTypeTransfer   GetApiV1InventoryMovementsParamsType = "transfer"
+)
+
+// Defines values for GetApiV1InventoryMovementsParamsStatus.
+const (
+	GetApiV1InventoryMovementsParamsStatusCancelled GetApiV1InventoryMovementsParamsStatus = "cancelled"
+	GetApiV1InventoryMovementsParamsStatusConfirmed GetApiV1InventoryMovementsParamsStatus = "confirmed"
+	GetApiV1InventoryMovementsParamsStatusDraft     GetApiV1InventoryMovementsParamsStatus = "draft"
+)
+
+// Defines values for GetApiV1InventoryMovementsParamsOrder.
+const (
+	GetApiV1InventoryMovementsParamsOrderAsc  GetApiV1InventoryMovementsParamsOrder = "asc"
+	GetApiV1InventoryMovementsParamsOrderDesc GetApiV1InventoryMovementsParamsOrder = "desc"
+)
+
 // Defines values for GetApiV1InventoryProductsParamsOrder.
 const (
 	GetApiV1InventoryProductsParamsOrderAsc  GetApiV1InventoryProductsParamsOrder = "asc"
@@ -67,9 +113,19 @@ const (
 
 // Defines values for GetApiV1InventoryWarehousesParamsOrder.
 const (
-	GetApiV1InventoryWarehousesParamsOrderAsc  GetApiV1InventoryWarehousesParamsOrder = "asc"
-	GetApiV1InventoryWarehousesParamsOrderDesc GetApiV1InventoryWarehousesParamsOrder = "desc"
+	Asc  GetApiV1InventoryWarehousesParamsOrder = "asc"
+	Desc GetApiV1InventoryWarehousesParamsOrder = "desc"
 )
+
+// AdjustmentMovementCreateRequest defines model for AdjustmentMovementCreateRequest.
+type AdjustmentMovementCreateRequest struct {
+	DestinationWarehouseId *openapi_types.UUID  `json:"destination_warehouse_id"`
+	IdempotencyKey         *string              `json:"idempotency_key,omitempty"`
+	Lines                  []MovementLineCreate `json:"lines"`
+	Notes                  *string              `json:"notes,omitempty"`
+	ReferenceNumber        string               `json:"reference_number"`
+	SourceWarehouseId      *openapi_types.UUID  `json:"source_warehouse_id"`
+}
 
 // Category defines model for Category.
 type Category struct {
@@ -128,6 +184,96 @@ type CategoryUpdateRequest struct {
 type ErrorResponse struct {
 	// Error Machine-readable error message
 	Error string `json:"error"`
+}
+
+// InboundMovementCreateRequest defines model for InboundMovementCreateRequest.
+type InboundMovementCreateRequest struct {
+	DestinationWarehouseId openapi_types.UUID   `json:"destination_warehouse_id"`
+	IdempotencyKey         *string              `json:"idempotency_key,omitempty"`
+	Lines                  []MovementLineCreate `json:"lines"`
+	Notes                  *string              `json:"notes,omitempty"`
+	ReferenceNumber        string               `json:"reference_number"`
+}
+
+// Movement defines model for Movement.
+type Movement struct {
+	CreatedAt              time.Time           `json:"created_at"`
+	CreatedBy              openapi_types.UUID  `json:"created_by"`
+	DestinationWarehouseId *openapi_types.UUID `json:"destination_warehouse_id"`
+	Id                     openapi_types.UUID  `json:"id"`
+	IdempotencyKey         *string             `json:"idempotency_key"`
+	Lines                  *[]MovementLine     `json:"lines,omitempty"`
+	Notes                  *string             `json:"notes"`
+	ReferenceNumber        string              `json:"reference_number"`
+	SourceWarehouseId      *openapi_types.UUID `json:"source_warehouse_id"`
+	Status                 MovementStatus      `json:"status"`
+	TenantId               openapi_types.UUID  `json:"tenant_id"`
+	Type                   MovementType        `json:"type"`
+	UpdatedAt              time.Time           `json:"updated_at"`
+}
+
+// MovementStatus defines model for Movement.Status.
+type MovementStatus string
+
+// MovementType defines model for Movement.Type.
+type MovementType string
+
+// MovementDraftFields defines model for MovementDraftFields.
+type MovementDraftFields struct {
+	IdempotencyKey  *string              `json:"idempotency_key,omitempty"`
+	Lines           []MovementLineCreate `json:"lines"`
+	Notes           *string              `json:"notes,omitempty"`
+	ReferenceNumber string               `json:"reference_number"`
+}
+
+// MovementLine defines model for MovementLine.
+type MovementLine struct {
+	CreatedAt  time.Time          `json:"created_at"`
+	Id         openapi_types.UUID `json:"id"`
+	MovementId openapi_types.UUID `json:"movement_id"`
+	Notes      *string            `json:"notes"`
+	ProductId  openapi_types.UUID `json:"product_id"`
+	Quantity   int32              `json:"quantity"`
+}
+
+// MovementLineCreate defines model for MovementLineCreate.
+type MovementLineCreate struct {
+	Notes     *string            `json:"notes,omitempty"`
+	ProductId openapi_types.UUID `json:"product_id"`
+	Quantity  int32              `json:"quantity"`
+}
+
+// MovementListResponse defines model for MovementListResponse.
+type MovementListResponse struct {
+	Data []Movement `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    SuccessMeta                 `json:"meta"`
+	Success MovementListResponseSuccess `json:"success"`
+}
+
+// MovementListResponseSuccess defines model for MovementListResponse.Success.
+type MovementListResponseSuccess bool
+
+// MovementSuccessEnvelope defines model for MovementSuccessEnvelope.
+type MovementSuccessEnvelope struct {
+	Data Movement `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    *SuccessMeta                   `json:"meta,omitempty"`
+	Success MovementSuccessEnvelopeSuccess `json:"success"`
+}
+
+// MovementSuccessEnvelopeSuccess defines model for MovementSuccessEnvelope.Success.
+type MovementSuccessEnvelopeSuccess bool
+
+// OutboundMovementCreateRequest defines model for OutboundMovementCreateRequest.
+type OutboundMovementCreateRequest struct {
+	IdempotencyKey    *string              `json:"idempotency_key,omitempty"`
+	Lines             []MovementLineCreate `json:"lines"`
+	Notes             *string              `json:"notes,omitempty"`
+	ReferenceNumber   string               `json:"reference_number"`
+	SourceWarehouseId openapi_types.UUID   `json:"source_warehouse_id"`
 }
 
 // PaginationMeta defines model for PaginationMeta.
@@ -212,6 +358,16 @@ type SuccessMeta struct {
 	RequestId  *string         `json:"request_id,omitempty"`
 }
 
+// TransferMovementCreateRequest defines model for TransferMovementCreateRequest.
+type TransferMovementCreateRequest struct {
+	DestinationWarehouseId openapi_types.UUID   `json:"destination_warehouse_id"`
+	IdempotencyKey         *string              `json:"idempotency_key,omitempty"`
+	Lines                  []MovementLineCreate `json:"lines"`
+	Notes                  *string              `json:"notes,omitempty"`
+	ReferenceNumber        string               `json:"reference_number"`
+	SourceWarehouseId      openapi_types.UUID   `json:"source_warehouse_id"`
+}
+
 // Warehouse defines model for Warehouse.
 type Warehouse struct {
 	Address   *string            `json:"address,omitempty"`
@@ -268,6 +424,9 @@ type WarehouseUpdateRequest struct {
 // CategoryId defines model for CategoryId.
 type CategoryId = openapi_types.UUID
 
+// MovementId defines model for MovementId.
+type MovementId = openapi_types.UUID
+
 // Order defines model for Order.
 type Order string
 
@@ -316,6 +475,26 @@ type GetApiV1InventoryCategoriesParams struct {
 // GetApiV1InventoryCategoriesParamsOrder defines parameters for GetApiV1InventoryCategories.
 type GetApiV1InventoryCategoriesParamsOrder string
 
+// GetApiV1InventoryMovementsParams defines parameters for GetApiV1InventoryMovements.
+type GetApiV1InventoryMovementsParams struct {
+	Page    *Page                                   `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPage                                `form:"per_page,omitempty" json:"per_page,omitempty"`
+	Search  *Search                                 `form:"search,omitempty" json:"search,omitempty"`
+	Type    *GetApiV1InventoryMovementsParamsType   `form:"type,omitempty" json:"type,omitempty"`
+	Status  *GetApiV1InventoryMovementsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	Sort    *Sort                                   `form:"sort,omitempty" json:"sort,omitempty"`
+	Order   *GetApiV1InventoryMovementsParamsOrder  `form:"order,omitempty" json:"order,omitempty"`
+}
+
+// GetApiV1InventoryMovementsParamsType defines parameters for GetApiV1InventoryMovements.
+type GetApiV1InventoryMovementsParamsType string
+
+// GetApiV1InventoryMovementsParamsStatus defines parameters for GetApiV1InventoryMovements.
+type GetApiV1InventoryMovementsParamsStatus string
+
+// GetApiV1InventoryMovementsParamsOrder defines parameters for GetApiV1InventoryMovements.
+type GetApiV1InventoryMovementsParamsOrder string
+
 // GetApiV1InventoryProductsParams defines parameters for GetApiV1InventoryProducts.
 type GetApiV1InventoryProductsParams struct {
 	Page    *Page                                 `form:"page,omitempty" json:"page,omitempty"`
@@ -349,6 +528,18 @@ type PostApiV1InventoryCategoriesJSONRequestBody = CategoryCreateRequest
 // PutApiV1InventoryCategoriesCategoryIdJSONRequestBody defines body for PutApiV1InventoryCategoriesCategoryId for application/json ContentType.
 type PutApiV1InventoryCategoriesCategoryIdJSONRequestBody = CategoryUpdateRequest
 
+// PostApiV1InventoryMovementsAdjustmentJSONRequestBody defines body for PostApiV1InventoryMovementsAdjustment for application/json ContentType.
+type PostApiV1InventoryMovementsAdjustmentJSONRequestBody = AdjustmentMovementCreateRequest
+
+// PostApiV1InventoryMovementsInboundJSONRequestBody defines body for PostApiV1InventoryMovementsInbound for application/json ContentType.
+type PostApiV1InventoryMovementsInboundJSONRequestBody = InboundMovementCreateRequest
+
+// PostApiV1InventoryMovementsOutboundJSONRequestBody defines body for PostApiV1InventoryMovementsOutbound for application/json ContentType.
+type PostApiV1InventoryMovementsOutboundJSONRequestBody = OutboundMovementCreateRequest
+
+// PostApiV1InventoryMovementsTransferJSONRequestBody defines body for PostApiV1InventoryMovementsTransfer for application/json ContentType.
+type PostApiV1InventoryMovementsTransferJSONRequestBody = TransferMovementCreateRequest
+
 // PostApiV1InventoryProductsJSONRequestBody defines body for PostApiV1InventoryProducts for application/json ContentType.
 type PostApiV1InventoryProductsJSONRequestBody = ProductCreateRequest
 
@@ -381,6 +572,30 @@ type ServerInterface interface {
 	// Inventory service liveness under API prefix
 	// (GET /api/v1/inventory/health)
 	GetInventoryHealth(ctx echo.Context) error
+	// List movements
+	// (GET /api/v1/inventory/movements)
+	GetApiV1InventoryMovements(ctx echo.Context, params GetApiV1InventoryMovementsParams) error
+	// Create draft adjustment movement
+	// (POST /api/v1/inventory/movements/adjustment)
+	PostApiV1InventoryMovementsAdjustment(ctx echo.Context) error
+	// Create draft inbound movement
+	// (POST /api/v1/inventory/movements/inbound)
+	PostApiV1InventoryMovementsInbound(ctx echo.Context) error
+	// Create draft outbound movement
+	// (POST /api/v1/inventory/movements/outbound)
+	PostApiV1InventoryMovementsOutbound(ctx echo.Context) error
+	// Create draft transfer movement
+	// (POST /api/v1/inventory/movements/transfer)
+	PostApiV1InventoryMovementsTransfer(ctx echo.Context) error
+	// Get movement with lines
+	// (GET /api/v1/inventory/movements/{movementId})
+	GetApiV1InventoryMovementsMovementId(ctx echo.Context, movementId MovementId) error
+	// Cancel draft movement
+	// (POST /api/v1/inventory/movements/{movementId}/cancel)
+	PostApiV1InventoryMovementsMovementIdCancel(ctx echo.Context, movementId MovementId) error
+	// Confirm draft movement (apply stock, audit, outbox)
+	// (POST /api/v1/inventory/movements/{movementId}/confirm)
+	PostApiV1InventoryMovementsMovementIdConfirm(ctx echo.Context, movementId MovementId) error
 	// List products
 	// (GET /api/v1/inventory/products)
 	GetApiV1InventoryProducts(ctx echo.Context, params GetApiV1InventoryProductsParams) error
@@ -546,6 +761,166 @@ func (w *ServerInterfaceWrapper) GetInventoryHealth(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetInventoryHealth(ctx)
+	return err
+}
+
+// GetApiV1InventoryMovements converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryMovements(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetApiV1InventoryMovementsParams
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", ctx.QueryParams(), &params.Page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// ------------- Optional query parameter "per_page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "per_page", ctx.QueryParams(), &params.PerPage)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter per_page: %s", err))
+	}
+
+	// ------------- Optional query parameter "search" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "search", ctx.QueryParams(), &params.Search)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter search: %s", err))
+	}
+
+	// ------------- Optional query parameter "type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "type", ctx.QueryParams(), &params.Type)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter type: %s", err))
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "status", ctx.QueryParams(), &params.Status)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter status: %s", err))
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sort", ctx.QueryParams(), &params.Sort)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sort: %s", err))
+	}
+
+	// ------------- Optional query parameter "order" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "order", ctx.QueryParams(), &params.Order)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter order: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryMovements(ctx, params)
+	return err
+}
+
+// PostApiV1InventoryMovementsAdjustment converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsAdjustment(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryMovementsAdjustment(ctx)
+	return err
+}
+
+// PostApiV1InventoryMovementsInbound converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsInbound(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryMovementsInbound(ctx)
+	return err
+}
+
+// PostApiV1InventoryMovementsOutbound converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsOutbound(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryMovementsOutbound(ctx)
+	return err
+}
+
+// PostApiV1InventoryMovementsTransfer converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsTransfer(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryMovementsTransfer(ctx)
+	return err
+}
+
+// GetApiV1InventoryMovementsMovementId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryMovementsMovementId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "movementId" -------------
+	var movementId MovementId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "movementId", ctx.Param("movementId"), &movementId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter movementId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryMovementsMovementId(ctx, movementId)
+	return err
+}
+
+// PostApiV1InventoryMovementsMovementIdCancel converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsMovementIdCancel(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "movementId" -------------
+	var movementId MovementId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "movementId", ctx.Param("movementId"), &movementId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter movementId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryMovementsMovementIdCancel(ctx, movementId)
+	return err
+}
+
+// PostApiV1InventoryMovementsMovementIdConfirm converts echo context to params.
+func (w *ServerInterfaceWrapper) PostApiV1InventoryMovementsMovementIdConfirm(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "movementId" -------------
+	var movementId MovementId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "movementId", ctx.Param("movementId"), &movementId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter movementId: %s", err))
+	}
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostApiV1InventoryMovementsMovementIdConfirm(ctx, movementId)
 	return err
 }
 
@@ -852,6 +1227,14 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.GetApiV1InventoryCategoriesCategoryId)
 	router.PUT(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.PutApiV1InventoryCategoriesCategoryId)
 	router.GET(baseURL+"/api/v1/inventory/health", wrapper.GetInventoryHealth)
+	router.GET(baseURL+"/api/v1/inventory/movements", wrapper.GetApiV1InventoryMovements)
+	router.POST(baseURL+"/api/v1/inventory/movements/adjustment", wrapper.PostApiV1InventoryMovementsAdjustment)
+	router.POST(baseURL+"/api/v1/inventory/movements/inbound", wrapper.PostApiV1InventoryMovementsInbound)
+	router.POST(baseURL+"/api/v1/inventory/movements/outbound", wrapper.PostApiV1InventoryMovementsOutbound)
+	router.POST(baseURL+"/api/v1/inventory/movements/transfer", wrapper.PostApiV1InventoryMovementsTransfer)
+	router.GET(baseURL+"/api/v1/inventory/movements/:movementId", wrapper.GetApiV1InventoryMovementsMovementId)
+	router.POST(baseURL+"/api/v1/inventory/movements/:movementId/cancel", wrapper.PostApiV1InventoryMovementsMovementIdCancel)
+	router.POST(baseURL+"/api/v1/inventory/movements/:movementId/confirm", wrapper.PostApiV1InventoryMovementsMovementIdConfirm)
 	router.GET(baseURL+"/api/v1/inventory/products", wrapper.GetApiV1InventoryProducts)
 	router.POST(baseURL+"/api/v1/inventory/products", wrapper.PostApiV1InventoryProducts)
 	router.DELETE(baseURL+"/api/v1/inventory/products/:productId", wrapper.DeleteApiV1InventoryProductsProductId)

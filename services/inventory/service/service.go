@@ -5,6 +5,8 @@ import (
 
 	catalogrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
+	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
+	movementuc "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/usecase"
 	warehouserepo "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/repository"
 	warehouseuc "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/usecase"
 )
@@ -31,4 +33,13 @@ type Service interface {
 	CreateWarehouse(ctx context.Context, in warehouseuc.CreateWarehouseInput) (warehouserepo.Warehouse, error)
 	UpdateWarehouse(ctx context.Context, warehouseID string, in warehouseuc.UpdateWarehouseInput) (warehouserepo.Warehouse, error)
 	DeleteWarehouse(ctx context.Context, warehouseID string) error
+
+	CreateInbound(ctx context.Context, destinationWarehouseID string, in movementuc.CreateMovementBase) (movrepo.Movement, error)
+	CreateOutbound(ctx context.Context, sourceWarehouseID string, in movementuc.CreateMovementBase) (movrepo.Movement, error)
+	CreateTransfer(ctx context.Context, sourceWarehouseID, destinationWarehouseID string, in movementuc.CreateMovementBase) (movrepo.Movement, error)
+	CreateAdjustment(ctx context.Context, sourceWarehouseID, destinationWarehouseID *string, in movementuc.CreateMovementBase) (movrepo.Movement, error)
+	GetMovement(ctx context.Context, movementID string) (movrepo.Movement, error)
+	ListMovements(ctx context.Context, in movementuc.ListMovementsInput) (movementuc.ListMovementsOutput, error)
+	ConfirmMovement(ctx context.Context, movementID string) (movrepo.Movement, error)
+	CancelMovement(ctx context.Context, movementID string) (movrepo.Movement, error)
 }

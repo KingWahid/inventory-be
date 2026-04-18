@@ -34,3 +34,12 @@ func TenantIDFromContext(ctx context.Context) (string, error) {
 	}
 	return claims.TenantID, nil
 }
+
+// SubjectFromContext returns JWT subject (user id) from ctx (RegisteredClaims.Subject).
+func SubjectFromContext(ctx context.Context) (string, error) {
+	claims, ok := ClaimsFromContext(ctx)
+	if !ok || claims == nil || claims.Subject == "" {
+		return "", errorcodes.ErrUnauthorized
+	}
+	return claims.Subject, nil
+}
