@@ -6,6 +6,7 @@ import (
 
 	"github.com/KingWahid/inventory/backend/pkg/database/transaction"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
+	warehouseuc "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/usecase"
 	"gorm.io/gorm"
 )
 
@@ -14,14 +15,16 @@ type InventoryService struct {
 	db        *gorm.DB
 	txManager transaction.Manager
 	catalog   cataloguc.Usecase
+	warehouse warehouseuc.Usecase
 }
 
 // NewInventoryService constructs the default inventory application service.
-func NewInventoryService(db *gorm.DB, txManager transaction.Manager, catalog cataloguc.Usecase) *InventoryService {
+func NewInventoryService(db *gorm.DB, txManager transaction.Manager, catalog cataloguc.Usecase, warehouse warehouseuc.Usecase) *InventoryService {
 	return &InventoryService{
 		db:        db,
 		txManager: txManager,
 		catalog:   catalog,
+		warehouse: warehouse,
 	}
 }
 

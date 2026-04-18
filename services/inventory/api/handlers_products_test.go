@@ -14,6 +14,8 @@ import (
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	catalogrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
+	warehouserepo "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/repository"
+	warehouseuc "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/usecase"
 	"github.com/KingWahid/inventory/backend/services/inventory/stub"
 )
 
@@ -62,6 +64,24 @@ func (productDelSvc) DeleteProduct(context.Context, string) error {
 func (productDelSvc) RestoreProduct(context.Context, string) (catalogrepo.Product, error) {
 	return catalogrepo.Product{}, errorcodes.ErrNotFound
 }
+
+func (productDelSvc) ListWarehouses(context.Context, warehouseuc.ListWarehousesInput) (warehouseuc.ListWarehousesOutput, error) {
+	return warehouseuc.ListWarehousesOutput{}, nil
+}
+
+func (productDelSvc) GetWarehouse(context.Context, string) (warehouserepo.Warehouse, error) {
+	return warehouserepo.Warehouse{}, errorcodes.ErrNotFound
+}
+
+func (productDelSvc) CreateWarehouse(context.Context, warehouseuc.CreateWarehouseInput) (warehouserepo.Warehouse, error) {
+	return warehouserepo.Warehouse{}, errorcodes.ErrNotFound
+}
+
+func (productDelSvc) UpdateWarehouse(context.Context, string, warehouseuc.UpdateWarehouseInput) (warehouserepo.Warehouse, error) {
+	return warehouserepo.Warehouse{}, errorcodes.ErrNotFound
+}
+
+func (productDelSvc) DeleteWarehouse(context.Context, string) error { return nil }
 
 func TestProductHandlers_DeleteBlocked422(t *testing.T) {
 	jwtSvc, err := commonjwt.NewService("prod-hdl-jwt-secret--32bytes-min", time.Hour, time.Hour)

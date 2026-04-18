@@ -6,6 +6,7 @@ import (
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	"github.com/KingWahid/inventory/backend/pkg/common/httpresponse"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
+	warehouseuc "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/usecase"
 	"github.com/KingWahid/inventory/backend/services/inventory/stub"
 	"github.com/labstack/echo/v4"
 )
@@ -274,31 +275,114 @@ func (h *ServerHandler) PostApiV1InventoryProductsProductIdRestore(c echo.Contex
 }
 
 // GetApiV1InventoryWarehouses handles GET /api/v1/inventory/warehouses.
-func (h *ServerHandler) GetApiV1InventoryWarehouses(c echo.Context, _ stub.GetApiV1InventoryWarehousesParams) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) GetApiV1InventoryWarehouses(c echo.Context, params stub.GetApiV1InventoryWarehousesParams) error {
+	ctx := c.Request().Context()
+	in := warehouseuc.ListWarehousesInput{}
+	if params.Page != nil {
+		in.Page = params.Page
+	}
+	if params.PerPage != nil {
+		in.PerPage = params.PerPage
+	}
+	if params.Search != nil {
+		s := string(*params.Search)
+		in.Search = &s
+	}
+	if params.Sort != nil {
+		s := string(*params.Sort)
+		in.Sort = &s
+	}
+	if params.Order != nil {
+		o := string(*params.Order)
+		in.Order = &o
+	}
+
+	out, err := h.svc.ListWarehouses(ctx, in)
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	data := make([]stub.Warehouse, 0, len(out.Items))
+	for i := range out.Items {
+		row, mErr := warehouseRepoToStub(out.Items[i])
+		if mErr != nil {
+			return httpresponse.Fail(c, errorcodes.ErrInternal)
+		}
+		data = append(data, row)
+	}
+	pg := httpresponse.PaginationMeta{
+		Page:       out.Page,
+		PerPage:    out.PerPage,
+		Total:      out.Total,
+		TotalPages: httpresponse.ComputeTotalPages(out.Total, int64(out.PerPage)),
+	}
+	return httpresponse.OKList(c, http.StatusOK, data, pg)
 }
 
 // PostApiV1InventoryWarehouses handles POST /api/v1/inventory/warehouses.
 func (h *ServerHandler) PostApiV1InventoryWarehouses(c echo.Context) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+	ctx := c.Request().Context()
+	var body stub.PostApiV1InventoryWarehousesJSONRequestBody
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	w, err := h.svc.CreateWarehouse(ctx, warehouseuc.CreateWarehouseInput{
+		Code:     body.Code,
+		Name:     body.Name,
+		Address:  body.Address,
+		IsActive: body.IsActive,
+	})
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	row, err := warehouseRepoToStub(w)
+	if err != nil {
+		return httpresponse.Fail(c, errorcodes.ErrInternal)
+	}
+	return httpresponse.OK(c, http.StatusCreated, row)
 }
 
 // DeleteApiV1InventoryWarehousesWarehouseId handles DELETE /api/v1/inventory/warehouses/{warehouseId}.
-func (h *ServerHandler) DeleteApiV1InventoryWarehousesWarehouseId(c echo.Context, _ stub.WarehouseId) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) DeleteApiV1InventoryWarehousesWarehouseId(c echo.Context, warehouseId stub.WarehouseId) error {
+	ctx := c.Request().Context()
+	if err := h.svc.DeleteWarehouse(ctx, warehouseId.String()); err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 // GetApiV1InventoryWarehousesWarehouseId handles GET /api/v1/inventory/warehouses/{warehouseId}.
-func (h *ServerHandler) GetApiV1InventoryWarehousesWarehouseId(c echo.Context, _ stub.WarehouseId) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) GetApiV1InventoryWarehousesWarehouseId(c echo.Context, warehouseId stub.WarehouseId) error {
+	ctx := c.Request().Context()
+	w, err := h.svc.GetWarehouse(ctx, warehouseId.String())
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	row, err := warehouseRepoToStub(w)
+	if err != nil {
+		return httpresponse.Fail(c, errorcodes.ErrInternal)
+	}
+	return httpresponse.OK(c, http.StatusOK, row)
 }
 
 // PutApiV1InventoryWarehousesWarehouseId handles PUT /api/v1/inventory/warehouses/{warehouseId}.
-func (h *ServerHandler) PutApiV1InventoryWarehousesWarehouseId(c echo.Context, _ stub.WarehouseId) error {
-	_ = c
-	return errorcodes.ErrNotImplemented
+func (h *ServerHandler) PutApiV1InventoryWarehousesWarehouseId(c echo.Context, warehouseId stub.WarehouseId) error {
+	ctx := c.Request().Context()
+	var body stub.PutApiV1InventoryWarehousesWarehouseIdJSONRequestBody
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	w, err := h.svc.UpdateWarehouse(ctx, warehouseId.String(), warehouseuc.UpdateWarehouseInput{
+		Code:     body.Code,
+		Name:     body.Name,
+		Address:  body.Address,
+		IsActive: body.IsActive,
+	})
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	row, err := warehouseRepoToStub(w)
+	if err != nil {
+		return httpresponse.Fail(c, errorcodes.ErrInternal)
+	}
+	return httpresponse.OK(c, http.StatusOK, row)
 }

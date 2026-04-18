@@ -228,7 +228,7 @@ type Warehouse struct {
 // WarehouseCreateRequest defines model for WarehouseCreateRequest.
 type WarehouseCreateRequest struct {
 	Address  *string `json:"address,omitempty"`
-	Code     *string `json:"code,omitempty"`
+	Code     string  `json:"code"`
 	IsActive *bool   `json:"is_active,omitempty"`
 	Name     string  `json:"name"`
 }
@@ -297,9 +297,6 @@ type ConflictError = ErrorResponse
 
 // NotFoundError defines model for NotFoundError.
 type NotFoundError = ErrorResponse
-
-// NotImplementedError defines model for NotImplementedError.
-type NotImplementedError = ErrorResponse
 
 // UnauthorizedError defines model for UnauthorizedError.
 type UnauthorizedError = ErrorResponse
