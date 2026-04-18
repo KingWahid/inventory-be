@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: Inventory API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
-    JSON errors from Echo (`success`, nested `error`, `meta.request_id`) via pkg/common/errorcodes (task 2.2).
-    Full §9 success envelope for data responses is deferred (BACKEND_TASKS 2.3).
+    JSON errors:  via pkg/common/errorcodes. JSON success: via pkg/common/httpresponse (`success`, `data`, `meta.request_id`, list `meta.pagination`).
+    Probes `/health`, `/ready`, `/api/v1/inventory/health` use `text/plain`, not §9 JSON.
 paths:
   /health:
     get:
@@ -88,7 +88,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Category"
+                $ref: "#/components/schemas/CategorySuccessEnvelope"
         "400":
           $ref: "#/components/responses/BadRequestError"
         "401":
@@ -110,7 +110,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Category"
+                $ref: "#/components/schemas/CategorySuccessEnvelope"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
@@ -135,7 +135,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Category"
+                $ref: "#/components/schemas/CategorySuccessEnvelope"
         "400":
           $ref: "#/components/responses/BadRequestError"
         "401":
@@ -207,7 +207,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Product"
+                $ref: "#/components/schemas/ProductSuccessEnvelope"
         "400":
           $ref: "#/components/responses/BadRequestError"
         "401":
@@ -229,7 +229,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Product"
+                $ref: "#/components/schemas/ProductSuccessEnvelope"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
@@ -254,7 +254,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Product"
+                $ref: "#/components/schemas/ProductSuccessEnvelope"
         "400":
           $ref: "#/components/responses/BadRequestError"
         "401":
@@ -293,7 +293,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Product"
+                $ref: "#/components/schemas/ProductSuccessEnvelope"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
@@ -342,7 +342,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Warehouse"
+                $ref: "#/components/schemas/WarehouseSuccessEnvelope"
         "400":
           $ref: "#/components/responses/BadRequestError"
         "401":
@@ -364,7 +364,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Warehouse"
+                $ref: "#/components/schemas/WarehouseSuccessEnvelope"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "404":
@@ -389,7 +389,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Warehouse"
+                $ref: "#/components/schemas/WarehouseSuccessEnvelope"
         "400":
           $ref: "#/components/responses/BadRequestError"
         "401":
@@ -533,6 +533,47 @@ components:
         total_pages:
           type: integer
           format: int32
+    SuccessMeta:
+      type: object
+      description: §9 meta for JSON success responses (list endpoints include pagination).
+      properties:
+        request_id:
+          type: string
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+    CategorySuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: "#/components/schemas/Category"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    ProductSuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: "#/components/schemas/Product"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    WarehouseSuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: "#/components/schemas/Warehouse"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
     Category:
       type: object
       required:
@@ -601,16 +642,17 @@ components:
           format: int32
     CategoryListResponse:
       type: object
-      required:
-        - data
-        - meta
+      required: [success, data, meta]
       properties:
+        success:
+          type: boolean
+          enum: [true]
         data:
           type: array
           items:
             $ref: "#/components/schemas/Category"
         meta:
-          $ref: "#/components/schemas/PaginationMeta"
+          $ref: "#/components/schemas/SuccessMeta"
     Product:
       type: object
       required:
@@ -693,16 +735,17 @@ components:
           format: double
     ProductListResponse:
       type: object
-      required:
-        - data
-        - meta
+      required: [success, data, meta]
       properties:
+        success:
+          type: boolean
+          enum: [true]
         data:
           type: array
           items:
             $ref: "#/components/schemas/Product"
         meta:
-          $ref: "#/components/schemas/PaginationMeta"
+          $ref: "#/components/schemas/SuccessMeta"
     Warehouse:
       type: object
       required:
@@ -763,13 +806,14 @@ components:
           type: boolean
     WarehouseListResponse:
       type: object
-      required:
-        - data
-        - meta
+      required: [success, data, meta]
       properties:
+        success:
+          type: boolean
+          enum: [true]
         data:
           type: array
           items:
             $ref: "#/components/schemas/Warehouse"
         meta:
-          $ref: "#/components/schemas/PaginationMeta"
+          $ref: "#/components/schemas/SuccessMeta"

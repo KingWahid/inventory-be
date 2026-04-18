@@ -17,6 +17,36 @@ const (
 	JwtAuthScopes = "JwtAuth.Scopes"
 )
 
+// Defines values for CategoryListResponseSuccess.
+const (
+	CategoryListResponseSuccessTrue CategoryListResponseSuccess = true
+)
+
+// Defines values for CategorySuccessEnvelopeSuccess.
+const (
+	CategorySuccessEnvelopeSuccessTrue CategorySuccessEnvelopeSuccess = true
+)
+
+// Defines values for ProductListResponseSuccess.
+const (
+	ProductListResponseSuccessTrue ProductListResponseSuccess = true
+)
+
+// Defines values for ProductSuccessEnvelopeSuccess.
+const (
+	ProductSuccessEnvelopeSuccessTrue ProductSuccessEnvelopeSuccess = true
+)
+
+// Defines values for WarehouseListResponseSuccess.
+const (
+	WarehouseListResponseSuccessTrue WarehouseListResponseSuccess = true
+)
+
+// Defines values for WarehouseSuccessEnvelopeSuccess.
+const (
+	WarehouseSuccessEnvelopeSuccessTrue WarehouseSuccessEnvelopeSuccess = true
+)
+
 // Defines values for Order.
 const (
 	OrderAsc  Order = "asc"
@@ -64,9 +94,27 @@ type CategoryCreateRequest struct {
 
 // CategoryListResponse defines model for CategoryListResponse.
 type CategoryListResponse struct {
-	Data []Category     `json:"data"`
-	Meta PaginationMeta `json:"meta"`
+	Data []Category `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    SuccessMeta                 `json:"meta"`
+	Success CategoryListResponseSuccess `json:"success"`
 }
+
+// CategoryListResponseSuccess defines model for CategoryListResponse.Success.
+type CategoryListResponseSuccess bool
+
+// CategorySuccessEnvelope defines model for CategorySuccessEnvelope.
+type CategorySuccessEnvelope struct {
+	Data Category `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    *SuccessMeta                   `json:"meta,omitempty"`
+	Success CategorySuccessEnvelopeSuccess `json:"success"`
+}
+
+// CategorySuccessEnvelopeSuccess defines model for CategorySuccessEnvelope.Success.
+type CategorySuccessEnvelopeSuccess bool
 
 // CategoryUpdateRequest defines model for CategoryUpdateRequest.
 type CategoryUpdateRequest struct {
@@ -120,9 +168,27 @@ type ProductCreateRequest struct {
 
 // ProductListResponse defines model for ProductListResponse.
 type ProductListResponse struct {
-	Data []Product      `json:"data"`
-	Meta PaginationMeta `json:"meta"`
+	Data []Product `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    SuccessMeta                `json:"meta"`
+	Success ProductListResponseSuccess `json:"success"`
 }
+
+// ProductListResponseSuccess defines model for ProductListResponse.Success.
+type ProductListResponseSuccess bool
+
+// ProductSuccessEnvelope defines model for ProductSuccessEnvelope.
+type ProductSuccessEnvelope struct {
+	Data Product `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    *SuccessMeta                  `json:"meta,omitempty"`
+	Success ProductSuccessEnvelopeSuccess `json:"success"`
+}
+
+// ProductSuccessEnvelopeSuccess defines model for ProductSuccessEnvelope.Success.
+type ProductSuccessEnvelopeSuccess bool
 
 // ProductUpdateRequest defines model for ProductUpdateRequest.
 type ProductUpdateRequest struct {
@@ -132,6 +198,12 @@ type ProductUpdateRequest struct {
 	Price       *float64            `json:"price,omitempty"`
 	Sku         *string             `json:"sku,omitempty"`
 	Unit        *string             `json:"unit,omitempty"`
+}
+
+// SuccessMeta §9 meta for JSON success responses (list endpoints include pagination).
+type SuccessMeta struct {
+	Pagination *PaginationMeta `json:"pagination,omitempty"`
+	RequestId  *string         `json:"request_id,omitempty"`
 }
 
 // Warehouse defines model for Warehouse.
@@ -157,9 +229,27 @@ type WarehouseCreateRequest struct {
 
 // WarehouseListResponse defines model for WarehouseListResponse.
 type WarehouseListResponse struct {
-	Data []Warehouse    `json:"data"`
-	Meta PaginationMeta `json:"meta"`
+	Data []Warehouse `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    SuccessMeta                  `json:"meta"`
+	Success WarehouseListResponseSuccess `json:"success"`
 }
+
+// WarehouseListResponseSuccess defines model for WarehouseListResponse.Success.
+type WarehouseListResponseSuccess bool
+
+// WarehouseSuccessEnvelope defines model for WarehouseSuccessEnvelope.
+type WarehouseSuccessEnvelope struct {
+	Data Warehouse `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    *SuccessMeta                    `json:"meta,omitempty"`
+	Success WarehouseSuccessEnvelopeSuccess `json:"success"`
+}
+
+// WarehouseSuccessEnvelopeSuccess defines model for WarehouseSuccessEnvelope.Success.
+type WarehouseSuccessEnvelopeSuccess bool
 
 // WarehouseUpdateRequest defines model for WarehouseUpdateRequest.
 type WarehouseUpdateRequest struct {

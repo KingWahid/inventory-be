@@ -187,12 +187,19 @@ func TestPostApiV1AuthRegister_Success(t *testing.T) {
 		t.Fatalf("expected status %d, got %d, body=%s", http.StatusCreated, rec.Code, rec.Body.String())
 	}
 
-	var got map[string]string
+	var got map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("failed decode response: %v", err)
 	}
-	if got["tenant_id"] == "" || got["user_id"] == "" || got["email"] != "owner@acme.test" {
-		t.Fatalf("unexpected response body: %+v", got)
+	if got["success"] != true {
+		t.Fatalf("expected success true, got %+v", got)
+	}
+	data, ok := got["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected data object, got %+v", got)
+	}
+	if data["tenant_id"] == "" || data["user_id"] == "" || data["email"] != "owner@acme.test" {
+		t.Fatalf("unexpected data: %+v", data)
 	}
 }
 

@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: Authentication Service API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Tenant scope is derived from the JWT (`tenant_id` claim), not from `X-Tenant-Id`.
-    JSON error responses from Echo use ARCHITECTURE §9 shape: `success`, nested `error` (`code`, `message`, optional `message_id`, `details`), `meta.request_id` — see `APIErrorEnvelope` in components (task 2.2).
-    Full §9 success envelope for happy paths (`success`/`data`/`meta`) is tracked separately (BACKEND_TASKS 2.3).
+    JSON errors: §9 envelope via `APIErrorEnvelope`. JSON success for login/register: §9 via `LoginSuccessEnvelope` / `RegisterSuccessEnvelope` (`success`, `data`, optional `meta.request_id`).
+    Probes `/health`, `/ready`, `/api/v1/auth/health` remain `text/plain`, not §9 JSON.
 servers:
   - url: /
 paths:
@@ -26,7 +26,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: '#/components/schemas/LoginSuccessEnvelope'
         "400":
           description: Invalid request
           content:
@@ -62,7 +62,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegisterResponse'
+                $ref: '#/components/schemas/RegisterSuccessEnvelope'
         "400":
           description: Invalid request
           content:
@@ -378,3 +378,35 @@ components:
       type: string
       description: Plain-text OK marker for probes
       example: ok
+    SuccessMeta:
+      type: object
+      description: §9 meta for successful JSON responses (optional fields).
+      properties:
+        request_id:
+          type: string
+        pagination:
+          type: object
+          description: Present only for list endpoints (not used on auth login/register).
+          additionalProperties: true
+    LoginSuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/LoginResponse'
+        meta:
+          $ref: '#/components/schemas/SuccessMeta'
+    RegisterSuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/RegisterResponse'
+        meta:
+          $ref: '#/components/schemas/SuccessMeta'

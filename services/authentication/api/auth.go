@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/KingWahid/inventory/backend/pkg/common/httpresponse"
 	"github.com/KingWahid/inventory/backend/services/authentication/service"
 	"github.com/KingWahid/inventory/backend/services/authentication/stub"
 	"github.com/labstack/echo/v4"
@@ -30,7 +31,7 @@ func (h *ServerHandler) PostApiV1AuthLogin(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
+	return httpresponse.OK(c, http.StatusOK, map[string]any{
 		"access_token":  result.AccessToken,
 		"refresh_token": result.RefreshToken,
 		"token_type":    result.TokenType,
@@ -58,7 +59,7 @@ func (h *ServerHandler) PostApiV1AuthRegister(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{
+	return httpresponse.OK(c, http.StatusCreated, map[string]string{
 		"tenant_id": result.TenantID,
 		"user_id":   result.UserID,
 		"email":     result.Email,

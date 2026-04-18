@@ -23,6 +23,16 @@ const (
 	False APIErrorEnvelopeSuccess = false
 )
 
+// Defines values for LoginSuccessEnvelopeSuccess.
+const (
+	LoginSuccessEnvelopeSuccessTrue LoginSuccessEnvelopeSuccess = true
+)
+
+// Defines values for RegisterSuccessEnvelopeSuccess.
+const (
+	RegisterSuccessEnvelopeSuccessTrue RegisterSuccessEnvelopeSuccess = true
+)
+
 // APIErrorEnvelope Runtime JSON for 4xx/5xx from authentication Echo HTTPErrorHandler (ARCHITECTURE §9).
 type APIErrorEnvelope struct {
 	Error   ErrorPayload            `json:"error"`
@@ -68,6 +78,18 @@ type LoginResponse struct {
 	TokenType    string `json:"token_type"`
 }
 
+// LoginSuccessEnvelope defines model for LoginSuccessEnvelope.
+type LoginSuccessEnvelope struct {
+	Data LoginResponse `json:"data"`
+
+	// Meta §9 meta for successful JSON responses (optional fields).
+	Meta    *SuccessMeta                `json:"meta,omitempty"`
+	Success LoginSuccessEnvelopeSuccess `json:"success"`
+}
+
+// LoginSuccessEnvelopeSuccess defines model for LoginSuccessEnvelope.Success.
+type LoginSuccessEnvelopeSuccess bool
+
 // MeResponse defines model for MeResponse.
 type MeResponse struct {
 	Email openapi_types.Email `json:"email"`
@@ -107,6 +129,25 @@ type RegisterResponse struct {
 	Email    openapi_types.Email `json:"email"`
 	TenantId openapi_types.UUID  `json:"tenant_id"`
 	UserId   openapi_types.UUID  `json:"user_id"`
+}
+
+// RegisterSuccessEnvelope defines model for RegisterSuccessEnvelope.
+type RegisterSuccessEnvelope struct {
+	Data RegisterResponse `json:"data"`
+
+	// Meta §9 meta for successful JSON responses (optional fields).
+	Meta    *SuccessMeta                   `json:"meta,omitempty"`
+	Success RegisterSuccessEnvelopeSuccess `json:"success"`
+}
+
+// RegisterSuccessEnvelopeSuccess defines model for RegisterSuccessEnvelope.Success.
+type RegisterSuccessEnvelopeSuccess bool
+
+// SuccessMeta §9 meta for successful JSON responses (optional fields).
+type SuccessMeta struct {
+	// Pagination Present only for list endpoints (not used on auth login/register).
+	Pagination *map[string]interface{} `json:"pagination,omitempty"`
+	RequestId  *string                 `json:"request_id,omitempty"`
 }
 
 // PostApiV1AuthLoginJSONRequestBody defines body for PostApiV1AuthLogin for application/json ContentType.
@@ -291,7 +332,7 @@ type PostApiV1AuthLoginResponseObject interface {
 	VisitPostApiV1AuthLoginResponse(w http.ResponseWriter) error
 }
 
-type PostApiV1AuthLogin200JSONResponse LoginResponse
+type PostApiV1AuthLogin200JSONResponse LoginSuccessEnvelope
 
 func (response PostApiV1AuthLogin200JSONResponse) VisitPostApiV1AuthLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -437,7 +478,7 @@ type PostApiV1AuthRegisterResponseObject interface {
 	VisitPostApiV1AuthRegisterResponse(w http.ResponseWriter) error
 }
 
-type PostApiV1AuthRegister201JSONResponse RegisterResponse
+type PostApiV1AuthRegister201JSONResponse RegisterSuccessEnvelope
 
 func (response PostApiV1AuthRegister201JSONResponse) VisitPostApiV1AuthRegisterResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")

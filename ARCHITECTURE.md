@@ -997,6 +997,8 @@ Headers: `Idempotency-Key: <uuid>` (required for create operations)
 }
 ```
 
+**Implementasi:** respons sukses JSON harus dibungkus helper [`pkg/common/httpresponse`](pkg/common/httpresponse) (`OK`, `OKList`, `Fail` mendelegasi error ke [`WriteHTTPError`](pkg/common/errorcodes/envelope.go)). **Pengecualian:** probe kesehatan berbasis teks (`text/plain`) seperti `GET /health`, `GET /ready`, dan `GET /api/v1/.../health` tidak memakai envelope JSON §9 — tetap body plaintext sesuai OpenAPI. Streaming/SSE di luar scope envelope JSON yang sama.
+
 ---
 
 ## 10. Event-Driven Architecture
