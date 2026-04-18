@@ -25,9 +25,10 @@ type LoginInput struct {
 
 // LoginResult is authentication success payload.
 type LoginResult struct {
-	AccessToken string
-	TokenType   string
-	ExpiresIn   int64
+	AccessToken  string
+	RefreshToken string
+	TokenType    string
+	ExpiresIn    int64
 }
 
 // Service is the authentication application facade.

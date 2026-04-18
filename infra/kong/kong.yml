@@ -1,4 +1,11 @@
 # Kong DB-less declarative config (dev). JWT/rate-limit: see BACKEND_TASKS 11.x.
+#
+# JWT validation strategy:
+# - Option A: Enable Kong's jwt plugin on routes; Kong verifies HS256 using the same secret as services.
+#   Forward Authorization as-is; services may skip re-verify only if you fully trust Kong (not default here).
+# - Option B (current): Kong forwards Authorization; inventory-api and authentication-service validate JWT
+#   with pkg/common/jwt (Bearer access tokens only on protected paths).
+# Avoid verifying the same JWT twice with different secrets or configs — pick one trust boundary and document it.
 _format_version: "3.0"
 _transform: true
 

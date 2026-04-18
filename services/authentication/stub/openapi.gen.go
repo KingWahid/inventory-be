@@ -32,12 +32,15 @@ type LoginRequest struct {
 
 // LoginResponse defines model for LoginResponse.
 type LoginResponse struct {
-	// AccessToken JWT access token
+	// AccessToken JWT access token (token_type=access)
 	AccessToken string `json:"access_token"`
 
 	// ExpiresIn Access token expiration in seconds
-	ExpiresIn int64  `json:"expires_in"`
-	TokenType string `json:"token_type"`
+	ExpiresIn int64 `json:"expires_in"`
+
+	// RefreshToken JWT refresh token (token_type=refresh); send only to POST /api/v1/auth/refresh until logout/session store ships
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
 }
 
 // MeResponse defines model for MeResponse.

@@ -62,9 +62,10 @@ func TestAuthenticationEndpointContract(t *testing.T) {
 				return service.LoginResult{}, errors.New("unexpected login failure")
 			default:
 				return service.LoginResult{
-					AccessToken: "token-ok",
-					TokenType:   "Bearer",
-					ExpiresIn:   900,
+					AccessToken:  "token-ok",
+					RefreshToken: "refresh-ok",
+					TokenType:    "Bearer",
+					ExpiresIn:    900,
 				}, nil
 			}
 		},

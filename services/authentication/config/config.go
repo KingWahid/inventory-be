@@ -9,6 +9,10 @@ type Config struct {
 	DBDSN                  string
 	RedisAddr              string
 	JWTSecret              string
+	JWTAccessSecret        string
+	JWTRefreshSecret       string
+	JWTIssuer              string
+	JWTAudience            string
 	JWTAccessTTLSeconds    int
 	JWTRefreshTTLSeconds   int
 }
@@ -29,6 +33,10 @@ func New() (*Config, error) {
 		DBDSN:                v.GetString("DB_DSN"),
 		RedisAddr:            v.GetString("REDIS_ADDR"),
 		JWTSecret:            v.GetString("JWT_SECRET"),
+		JWTAccessSecret:      v.GetString("JWT_ACCESS_SECRET"),
+		JWTRefreshSecret:     v.GetString("JWT_REFRESH_SECRET"),
+		JWTIssuer:            v.GetString("JWT_ISSUER"),
+		JWTAudience:          v.GetString("JWT_AUDIENCE"),
 		JWTAccessTTLSeconds:  v.GetInt("JWT_ACCESS_TTL_SECONDS"),
 		JWTRefreshTTLSeconds: v.GetInt("JWT_REFRESH_TTL_SECONDS"),
 	}, nil

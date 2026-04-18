@@ -31,9 +31,10 @@ func (h *ServerHandler) PostApiV1AuthLogin(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{
-		"access_token": result.AccessToken,
-		"token_type":   result.TokenType,
-		"expires_in":   result.ExpiresIn,
+		"access_token":  result.AccessToken,
+		"refresh_token": result.RefreshToken,
+		"token_type":    result.TokenType,
+		"expires_in":    result.ExpiresIn,
 	})
 }
 

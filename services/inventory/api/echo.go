@@ -11,17 +11,26 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/services/inventory/config"
 )
 
+// InventoryPublicPaths skip JWT (exact URL.Path); must align with OpenAPI public probes.
+var InventoryPublicPaths = map[string]struct{}{
+	"/health":                      {},
+	"/ready":                       {},
+	"/api/v1/inventory/health":     {},
+}
+
 // NewEcho builds Echo with error handling and lifecycle; routes are registered separately (see fx.RegisterRoutes).
-func NewEcho(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger) *echo.Echo {
+func NewEcho(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger, jwtSvc *commonjwt.Service) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.HTTPErrorHandler = httpErrorHandler
 	e.Use(middleware.RequestID())
 	e.Use(middleware.Recover())
 	e.Use(requestLoggerMiddleware(log))
+	e.Use(commonjwt.RequireBearerAccessJWT(jwtSvc, InventoryPublicPaths))
 
 	addr := ":" + cfg.AppPort
 	lc.Append(fx.Hook{

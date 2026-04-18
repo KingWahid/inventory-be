@@ -98,15 +98,25 @@ func (s *AuthenticationService) Login(ctx context.Context, in LoginInput) (Login
 		return LoginResult{}, errorcodes.ErrUnauthorized
 	}
 
-	token, err := s.jwt.GenerateAccessToken(user.ID, user.TenantID)
+	ci := commonjwt.ClaimsInput{
+		Subject:  user.ID,
+		TenantID: user.TenantID,
+		Role:     user.Role,
+	}
+	access, err := s.jwt.GenerateAccessToken(ci)
 	if err != nil {
 		return LoginResult{}, fmt.Errorf("login: generate access token: %w", err)
 	}
+	refresh, err := s.jwt.GenerateRefreshToken(ci)
+	if err != nil {
+		return LoginResult{}, fmt.Errorf("login: generate refresh token: %w", err)
+	}
 
 	return LoginResult{
-		AccessToken: token,
-		TokenType:   "Bearer",
-		ExpiresIn:   s.accessTTLSeconds,
+		AccessToken:  access,
+		RefreshToken: refresh,
+		TokenType:    "Bearer",
+		ExpiresIn:    s.accessTTLSeconds,
 	}, nil
 }
 

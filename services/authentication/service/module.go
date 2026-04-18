@@ -13,10 +13,14 @@ import (
 var Module = fx.Module("authentication-service",
 	fx.Provide(repository.New),
 	fx.Provide(func(cfg *config.Config) (*commonjwt.Service, error) {
-		return commonjwt.NewService(
+		return commonjwt.NewServiceFromSharedOrSplit(
 			cfg.JWTSecret,
+			cfg.JWTAccessSecret,
+			cfg.JWTRefreshSecret,
 			time.Duration(cfg.JWTAccessTTLSeconds)*time.Second,
 			time.Duration(cfg.JWTRefreshTTLSeconds)*time.Second,
+			cfg.JWTIssuer,
+			cfg.JWTAudience,
 		)
 	}),
 	fx.Provide(func(repo repository.Repository, jwtSvc *commonjwt.Service, cfg *config.Config) Service {
