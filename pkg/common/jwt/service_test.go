@@ -87,6 +87,9 @@ func TestGenerateAndParseRefreshToken(t *testing.T) {
 	if claims.TokenType != TokenTypeRefresh {
 		t.Fatalf("expected token type refresh, got %s", claims.TokenType)
 	}
+	if claims.ID == "" {
+		t.Fatal("refresh token must set jti (RegisteredClaims.ID)")
+	}
 }
 
 func TestTokenTypeMismatch(t *testing.T) {

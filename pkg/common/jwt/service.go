@@ -7,6 +7,7 @@ import (
 	"time"
 
 	jwtv4 "github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 )
@@ -114,6 +115,14 @@ func (s *Service) generateToken(in ClaimsInput, tokenType string, ttl time.Durat
 		rc.Audience = jwtv4.ClaimStrings{s.audience}
 	}
 
+	if tokenType == TokenTypeRefresh {
+		id, err := uuid.NewRandom()
+		if err != nil {
+			return "", fmt.Errorf("jwt: refresh jti: %w", err)
+		}
+		rc.ID = id.String()
+	}
+
 	perms := append([]string(nil), in.Permissions...)
 	claims := Claims{
 		TenantID:         in.TenantID,
@@ -205,6 +214,9 @@ func (s *Service) parseTokenWithKey(token string, secret []byte) (*Claims, error
 	}
 
 	if claims.TokenType != TokenTypeAccess && claims.TokenType != TokenTypeRefresh {
+		return nil, errorcodes.ErrJWTInvalidClaims
+	}
+	if claims.TokenType == TokenTypeRefresh && claims.ID == "" {
 		return nil, errorcodes.ErrJWTInvalidClaims
 	}
 

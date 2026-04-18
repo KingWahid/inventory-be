@@ -31,9 +31,25 @@ type LoginResult struct {
 	ExpiresIn    int64
 }
 
+// RefreshInput carries the refresh JWT from the client.
+type RefreshInput struct {
+	RefreshToken string
+}
+
+// MeResult is the current user profile for GET /auth/me.
+type MeResult struct {
+	UserID   string
+	TenantID string
+	Email    string
+	FullName string
+}
+
 // Service is the authentication application facade.
 type Service interface {
 	PingDB(ctx context.Context) error
 	RegisterTenantAdmin(ctx context.Context, in RegisterInput) (RegisterResult, error)
 	Login(ctx context.Context, in LoginInput) (LoginResult, error)
+	Refresh(ctx context.Context, in RefreshInput) (LoginResult, error)
+	Logout(ctx context.Context) error
+	Me(ctx context.Context) (MeResult, error)
 }

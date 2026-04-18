@@ -28,6 +28,16 @@ const (
 	LoginSuccessEnvelopeSuccessTrue LoginSuccessEnvelopeSuccess = true
 )
 
+// Defines values for MeSuccessEnvelopeSuccess.
+const (
+	MeSuccessEnvelopeSuccessTrue MeSuccessEnvelopeSuccess = true
+)
+
+// Defines values for RefreshSuccessEnvelopeSuccess.
+const (
+	RefreshSuccessEnvelopeSuccessTrue RefreshSuccessEnvelopeSuccess = true
+)
+
 // Defines values for RegisterSuccessEnvelopeSuccess.
 const (
 	RegisterSuccessEnvelopeSuccessTrue RegisterSuccessEnvelopeSuccess = true
@@ -100,6 +110,18 @@ type MeResponse struct {
 	UserId   openapi_types.UUID `json:"user_id"`
 }
 
+// MeSuccessEnvelope defines model for MeSuccessEnvelope.
+type MeSuccessEnvelope struct {
+	Data MeResponse `json:"data"`
+
+	// Meta §9 meta for successful JSON responses (optional fields).
+	Meta    *SuccessMeta             `json:"meta,omitempty"`
+	Success MeSuccessEnvelopeSuccess `json:"success"`
+}
+
+// MeSuccessEnvelopeSuccess defines model for MeSuccessEnvelope.Success.
+type MeSuccessEnvelopeSuccess bool
+
 // PlainTextOk Plain-text OK marker for probes
 type PlainTextOk = string
 
@@ -111,10 +133,23 @@ type RefreshRequest struct {
 
 // RefreshResponse defines model for RefreshResponse.
 type RefreshResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int64  `json:"expires_in"`
-	TokenType   string `json:"token_type"`
+	AccessToken  string `json:"access_token"`
+	ExpiresIn    int64  `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
 }
+
+// RefreshSuccessEnvelope defines model for RefreshSuccessEnvelope.
+type RefreshSuccessEnvelope struct {
+	Data RefreshResponse `json:"data"`
+
+	// Meta §9 meta for successful JSON responses (optional fields).
+	Meta    *SuccessMeta                  `json:"meta,omitempty"`
+	Success RefreshSuccessEnvelopeSuccess `json:"success"`
+}
+
+// RefreshSuccessEnvelopeSuccess defines model for RefreshSuccessEnvelope.Success.
+type RefreshSuccessEnvelopeSuccess bool
 
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
@@ -392,15 +427,6 @@ func (response PostApiV1AuthLogout401JSONResponse) VisitPostApiV1AuthLogoutRespo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostApiV1AuthLogout501JSONResponse ErrorResponse
-
-func (response PostApiV1AuthLogout501JSONResponse) VisitPostApiV1AuthLogoutResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type GetApiV1AuthMeRequestObject struct {
 }
 
@@ -408,7 +434,7 @@ type GetApiV1AuthMeResponseObject interface {
 	VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error
 }
 
-type GetApiV1AuthMe200JSONResponse MeResponse
+type GetApiV1AuthMe200JSONResponse MeSuccessEnvelope
 
 func (response GetApiV1AuthMe200JSONResponse) VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -426,11 +452,20 @@ func (response GetApiV1AuthMe401JSONResponse) VisitGetApiV1AuthMeResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetApiV1AuthMe501JSONResponse ErrorResponse
+type GetApiV1AuthMe403JSONResponse ErrorResponse
 
-func (response GetApiV1AuthMe501JSONResponse) VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error {
+func (response GetApiV1AuthMe403JSONResponse) VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetApiV1AuthMe404JSONResponse ErrorResponse
+
+func (response GetApiV1AuthMe404JSONResponse) VisitGetApiV1AuthMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -443,7 +478,7 @@ type PostApiV1AuthRefreshResponseObject interface {
 	VisitPostApiV1AuthRefreshResponse(w http.ResponseWriter) error
 }
 
-type PostApiV1AuthRefresh200JSONResponse RefreshResponse
+type PostApiV1AuthRefresh200JSONResponse RefreshSuccessEnvelope
 
 func (response PostApiV1AuthRefresh200JSONResponse) VisitPostApiV1AuthRefreshResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -461,11 +496,11 @@ func (response PostApiV1AuthRefresh400JSONResponse) VisitPostApiV1AuthRefreshRes
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostApiV1AuthRefresh501JSONResponse ErrorResponse
+type PostApiV1AuthRefresh401JSONResponse ErrorResponse
 
-func (response PostApiV1AuthRefresh501JSONResponse) VisitPostApiV1AuthRefreshResponse(w http.ResponseWriter) error {
+func (response PostApiV1AuthRefresh401JSONResponse) VisitPostApiV1AuthRefreshResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }

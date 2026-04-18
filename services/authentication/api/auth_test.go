@@ -17,6 +17,9 @@ import (
 type fakeAuthService struct {
 	registerFn func(ctx context.Context, in service.RegisterInput) (service.RegisterResult, error)
 	loginFn    func(ctx context.Context, in service.LoginInput) (service.LoginResult, error)
+	refreshFn  func(ctx context.Context, in service.RefreshInput) (service.LoginResult, error)
+	logoutFn   func(ctx context.Context) error
+	meFn       func(ctx context.Context) (service.MeResult, error)
 	pingErr    error
 }
 
@@ -28,6 +31,27 @@ func (f fakeAuthService) RegisterTenantAdmin(ctx context.Context, in service.Reg
 
 func (f fakeAuthService) Login(ctx context.Context, in service.LoginInput) (service.LoginResult, error) {
 	return f.loginFn(ctx, in)
+}
+
+func (f fakeAuthService) Refresh(ctx context.Context, in service.RefreshInput) (service.LoginResult, error) {
+	if f.refreshFn != nil {
+		return f.refreshFn(ctx, in)
+	}
+	return service.LoginResult{}, errorcodes.ErrNotImplemented
+}
+
+func (f fakeAuthService) Logout(ctx context.Context) error {
+	if f.logoutFn != nil {
+		return f.logoutFn(ctx)
+	}
+	return nil
+}
+
+func (f fakeAuthService) Me(ctx context.Context) (service.MeResult, error) {
+	if f.meFn != nil {
+		return f.meFn(ctx)
+	}
+	return service.MeResult{}, errorcodes.ErrNotImplemented
 }
 
 func TestAuthenticationEndpointContract(t *testing.T) {

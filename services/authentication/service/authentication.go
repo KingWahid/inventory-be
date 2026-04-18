@@ -117,6 +117,14 @@ func (s *AuthenticationService) Login(ctx context.Context, in LoginInput) (Login
 		return LoginResult{}, err
 	}
 
+	rClaims, err := s.jwt.ParseRefresh(refresh)
+	if err != nil || rClaims.ID == "" || rClaims.ExpiresAt == nil {
+		return LoginResult{}, fmt.Errorf("%w: parse issued refresh", errorcodes.ErrInternal)
+	}
+	if err := s.repo.InsertRefreshSession(ctx, user.ID, user.TenantID, rClaims.ID, rClaims.ExpiresAt.Time); err != nil {
+		return LoginResult{}, fmt.Errorf("login: persist refresh session: %w", err)
+	}
+
 	return LoginResult{
 		AccessToken:  access,
 		RefreshToken: refresh,
@@ -128,6 +136,105 @@ func (s *AuthenticationService) Login(ctx context.Context, in LoginInput) (Login
 var nonSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
 
 // generateTenantSlug builds a unique URL-safe slug (ARCHITECTURE §7 tenants.slug).
+// Refresh validates a refresh JWT and session row, rotates refresh, and issues new tokens.
+func (s *AuthenticationService) Refresh(ctx context.Context, in RefreshInput) (LoginResult, error) {
+	rt := strings.TrimSpace(in.RefreshToken)
+	if rt == "" {
+		return LoginResult{}, errorcodes.ErrValidationError.WithDetails(map[string]any{
+			"message": "refresh_token is required",
+		})
+	}
+
+	claims, err := s.jwt.ParseRefresh(rt)
+	if err != nil {
+		return LoginResult{}, errorcodes.ErrUnauthorized
+	}
+
+	uid, tid, active, err := s.repo.FindActiveRefreshSession(ctx, claims.ID)
+	if err != nil {
+		return LoginResult{}, fmt.Errorf("refresh: session lookup: %w", err)
+	}
+	if !active || uid != claims.Subject || tid != claims.TenantID {
+		return LoginResult{}, errorcodes.ErrUnauthorized
+	}
+
+	user, err := s.repo.FindUserCredentialByID(ctx, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return LoginResult{}, errorcodes.ErrUnauthorized
+		}
+		return LoginResult{}, err
+	}
+
+	if err := s.repo.RevokeRefreshSession(ctx, claims.ID); err != nil {
+		return LoginResult{}, err
+	}
+
+	ci := commonjwt.ClaimsInput{
+		Subject:     user.ID,
+		TenantID:    user.TenantID,
+		Role:        user.Role,
+		Permissions: commonjwt.PermissionsForRole(user.Role),
+	}
+	access, err := s.jwt.GenerateAccessToken(ci)
+	if err != nil {
+		return LoginResult{}, err
+	}
+	newRefresh, err := s.jwt.GenerateRefreshToken(ci)
+	if err != nil {
+		return LoginResult{}, err
+	}
+	nrClaims, err := s.jwt.ParseRefresh(newRefresh)
+	if err != nil || nrClaims.ID == "" || nrClaims.ExpiresAt == nil {
+		return LoginResult{}, fmt.Errorf("%w: parse issued refresh", errorcodes.ErrInternal)
+	}
+	if err := s.repo.InsertRefreshSession(ctx, user.ID, user.TenantID, nrClaims.ID, nrClaims.ExpiresAt.Time); err != nil {
+		return LoginResult{}, fmt.Errorf("refresh: persist session: %w", err)
+	}
+
+	return LoginResult{
+		AccessToken:  access,
+		RefreshToken: newRefresh,
+		TokenType:    "Bearer",
+		ExpiresIn:    s.accessTTLSeconds,
+	}, nil
+}
+
+// Logout revokes all refresh sessions for the access-token subject.
+func (s *AuthenticationService) Logout(ctx context.Context) error {
+	claims, ok := commonjwt.ClaimsFromContext(ctx)
+	if !ok || claims == nil || claims.Subject == "" {
+		return errorcodes.ErrUnauthorized
+	}
+	return s.repo.RevokeAllRefreshSessionsForUser(ctx, claims.Subject)
+}
+
+// Me returns the profile for the authenticated access token.
+func (s *AuthenticationService) Me(ctx context.Context) (MeResult, error) {
+	claims, ok := commonjwt.ClaimsFromContext(ctx)
+	if !ok || claims == nil || claims.Subject == "" {
+		return MeResult{}, errorcodes.ErrUnauthorized
+	}
+
+	prof, err := s.repo.FindUserProfileByID(ctx, claims.Subject)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return MeResult{}, errorcodes.ErrNotFound
+		}
+		return MeResult{}, err
+	}
+	if prof.TenantID != claims.TenantID {
+		return MeResult{}, errorcodes.ErrForbidden
+	}
+
+	return MeResult{
+		UserID:   prof.UserID,
+		TenantID: prof.TenantID,
+		Email:    prof.Email,
+		FullName: prof.FullName,
+	}, nil
+}
+
 func generateTenantSlug(name string) string {
 	base := strings.TrimSpace(strings.ToLower(name))
 	base = strings.Trim(nonSlugChars.ReplaceAllString(base, "-"), "-")

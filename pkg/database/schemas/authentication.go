@@ -25,3 +25,11 @@ type AuthUserCredential struct {
 	PasswordHash string
 	Role         string
 }
+
+// UserProfile is non-sensitive user fields for /auth/me.
+type UserProfile struct {
+	UserID   string `json:"user_id" gorm:"column:user_id"`
+	TenantID string `json:"tenant_id" gorm:"column:tenant_id"`
+	Email    string `json:"email"`
+	FullName string `json:"full_name" gorm:"column:full_name"`
+}

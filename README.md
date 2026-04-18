@@ -43,6 +43,31 @@ curl -sS "$BASE/api/v1/inventory/categories?page=1&per_page=20" \
   -H "X-Request-Id: demo-$(date +%s)"
 ```
 
+### Refresh, `/me`, logout (Kong)
+
+After login, `data.refresh_token` is stored server-side (session row); use it **without** a Bearer header on refresh.
+
+```bash
+BASE=http://localhost:8000
+# Set ACCESS, REFRESH from login §9 envelope (e.g. with jq: export ACCESS=$(jq -r '.data.access_token' login.json))
+ACCESS="<paste access_token>"
+REFRESH="<paste refresh_token>"
+
+# Rotate tokens (200, §9 envelope; new pair in data)
+curl -sS -X POST "$BASE/api/v1/auth/refresh" \
+  -H "Content-Type: application/json" \
+  -d "{\"refresh_token\":\"$REFRESH\"}"
+
+# Current user (200, §9 envelope)
+curl -sS "$BASE/api/v1/auth/me" -H "Authorization: Bearer $ACCESS"
+
+# Logout (204; revokes all refresh sessions for this user)
+curl -sS -o /dev/null -w "%{http_code}\n" -X POST "$BASE/api/v1/auth/logout" \
+  -H "Authorization: Bearer $ACCESS"
+```
+
+After logout, the old **refresh** JWT should return **401** on `POST /auth/refresh`.
+
 ### Rate limit burst test (login)
 
 Limits are configured in `kong.yml` (`minute` / `second`). Sending many rapid requests should eventually return **429**:

@@ -2,7 +2,10 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"strings"
+	"time"
 
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	"github.com/KingWahid/inventory/backend/pkg/database/base"
@@ -15,6 +18,12 @@ type Repository interface {
 	PingDB(ctx context.Context) error
 	CreateTenantAdmin(ctx context.Context, in schemas.CreateTenantAdminInput) (schemas.CreateTenantAdminResult, error)
 	FindUserCredentialByEmail(ctx context.Context, email string) (schemas.AuthUserCredential, error)
+	FindUserCredentialByID(ctx context.Context, userID string) (schemas.AuthUserCredential, error)
+	FindUserProfileByID(ctx context.Context, userID string) (schemas.UserProfile, error)
+	InsertRefreshSession(ctx context.Context, userID, tenantID, jti string, expiresAt time.Time) error
+	FindActiveRefreshSession(ctx context.Context, jti string) (userID, tenantID string, ok bool, err error)
+	RevokeRefreshSession(ctx context.Context, jti string) error
+	RevokeAllRefreshSessionsForUser(ctx context.Context, userID string) error
 }
 
 type repository struct {
@@ -82,4 +91,75 @@ func (r *repository) FindUserCredentialByEmail(ctx context.Context, email string
 		return schemas.AuthUserCredential{}, gorm.ErrRecordNotFound
 	}
 	return out, nil
+}
+
+func (r *repository) FindUserCredentialByID(ctx context.Context, userID string) (schemas.AuthUserCredential, error) {
+	var out schemas.AuthUserCredential
+	err := r.DB().WithContext(ctx).Raw(
+		`SELECT id, tenant_id, email, password_hash, role FROM users WHERE id = ? LIMIT 1`,
+		strings.TrimSpace(userID),
+	).Scan(&out).Error
+	if err != nil {
+		return schemas.AuthUserCredential{}, err
+	}
+	if out.ID == "" || out.TenantID == "" {
+		return schemas.AuthUserCredential{}, gorm.ErrRecordNotFound
+	}
+	return out, nil
+}
+
+func (r *repository) FindUserProfileByID(ctx context.Context, userID string) (schemas.UserProfile, error) {
+	var out schemas.UserProfile
+	err := r.DB().WithContext(ctx).Raw(
+		`SELECT id::text AS user_id, tenant_id::text AS tenant_id, email, COALESCE(full_name, '') AS full_name FROM users WHERE id = ? LIMIT 1`,
+		strings.TrimSpace(userID),
+	).Scan(&out).Error
+	if err != nil {
+		return schemas.UserProfile{}, err
+	}
+	if out.UserID == "" || out.TenantID == "" {
+		return schemas.UserProfile{}, gorm.ErrRecordNotFound
+	}
+	return out, nil
+}
+
+func (r *repository) InsertRefreshSession(ctx context.Context, userID, tenantID, jti string, expiresAt time.Time) error {
+	return r.DB().WithContext(ctx).Exec(
+		`INSERT INTO refresh_sessions (user_id, tenant_id, jti, expires_at) VALUES (?, ?, ?, ?)`,
+		userID, tenantID, jti, expiresAt,
+	).Error
+}
+
+func (r *repository) FindActiveRefreshSession(ctx context.Context, jti string) (userID, tenantID string, ok bool, err error) {
+	var uid, tid string
+	tx := r.DB().WithContext(ctx).Raw(
+		`SELECT user_id::text, tenant_id::text FROM refresh_sessions
+		 WHERE jti = ? AND revoked_at IS NULL AND expires_at > NOW()`,
+		strings.TrimSpace(jti),
+	).Row()
+	err = tx.Scan(&uid, &tid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", false, nil
+	}
+	if err != nil {
+		return "", "", false, err
+	}
+	if uid == "" || tid == "" {
+		return "", "", false, nil
+	}
+	return uid, tid, true, nil
+}
+
+func (r *repository) RevokeRefreshSession(ctx context.Context, jti string) error {
+	return r.DB().WithContext(ctx).Exec(
+		`UPDATE refresh_sessions SET revoked_at = NOW() WHERE jti = ? AND revoked_at IS NULL`,
+		strings.TrimSpace(jti),
+	).Error
+}
+
+func (r *repository) RevokeAllRefreshSessionsForUser(ctx context.Context, userID string) error {
+	return r.DB().WithContext(ctx).Exec(
+		`UPDATE refresh_sessions SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL`,
+		strings.TrimSpace(userID),
+	).Error
 }
