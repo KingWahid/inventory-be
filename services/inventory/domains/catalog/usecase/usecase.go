@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	cachepkg "github.com/KingWahid/inventory/backend/pkg/cache"
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
@@ -107,11 +108,15 @@ type UpdateProductInput struct {
 type usecase struct {
 	repo     repository.Repository
 	auditLog *logwriter.Writer
+	cache    cachepkg.Cache
 }
 
-// New creates catalog usecase implementation.
-func New(repo repository.Repository, audit *logwriter.Writer) Usecase {
-	return &usecase{repo: repo, auditLog: audit}
+// New creates catalog usecase implementation (cache may be nil → noop via provider).
+func New(repo repository.Repository, audit *logwriter.Writer, c cachepkg.Cache) Usecase {
+	if c == nil {
+		c = cachepkg.Noop{}
+	}
+	return &usecase{repo: repo, auditLog: audit, cache: c}
 }
 
 func (u *usecase) Ping() error {
@@ -151,6 +156,15 @@ func (u *usecase) ListCategories(ctx context.Context, in ListCategoriesInput) (L
 		order = *in.Order
 	}
 
+	fp := cachepkg.CategoriesFP(page, perPage, search, sort, order)
+	ckey := cachepkg.KeyCategoriesList(tid, fp)
+	if raw, hit, err := u.cache.Get(ctx, ckey); err == nil && hit {
+		var out ListCategoriesOutput
+		if err := json.Unmarshal(raw, &out); err == nil {
+			return out, nil
+		}
+	}
+
 	items, total, err := u.repo.List(ctx, tid, repository.ListFilter{
 		Page:    page,
 		PerPage: perPage,
@@ -162,12 +176,16 @@ func (u *usecase) ListCategories(ctx context.Context, in ListCategoriesInput) (L
 		return ListCategoriesOutput{}, err
 	}
 
-	return ListCategoriesOutput{
+	out := ListCategoriesOutput{
 		Items:   items,
 		Total:   total,
 		Page:    int32(page),
 		PerPage: int32(perPage),
-	}, nil
+	}
+	if payload, err := json.Marshal(out); err == nil {
+		_ = u.cache.Set(ctx, ckey, payload, cachepkg.TTLCategoryList)
+	}
+	return out, nil
 }
 
 func (u *usecase) GetCategory(ctx context.Context, categoryID string) (repository.Category, error) {
@@ -213,6 +231,7 @@ func (u *usecase) CreateCategory(ctx context.Context, in CreateCategoryInput) (r
 			After:    toAuditMap(cat),
 		})
 	}
+	u.invalidateAfterCategoryWrite(ctx, tid)
 	return cat, nil
 }
 
@@ -270,6 +289,7 @@ func (u *usecase) UpdateCategory(ctx context.Context, categoryID string, in Upda
 			After:    toAuditMap(cat),
 		})
 	}
+	u.invalidateAfterCategoryWrite(ctx, tid)
 	return cat, nil
 }
 
@@ -319,5 +339,6 @@ func (u *usecase) DeleteCategory(ctx context.Context, categoryID string) error {
 			After:    map[string]any{"deleted": true},
 		})
 	}
+	u.invalidateAfterCategoryWrite(ctx, tid)
 	return nil
 }

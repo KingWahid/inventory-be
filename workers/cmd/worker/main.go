@@ -17,6 +17,7 @@ import (
 	"github.com/KingWahid/inventory/backend/infra/postgres"
 	"github.com/KingWahid/inventory/backend/pkg/eventbus"
 	outboxrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/outbox/repository"
+	"github.com/KingWahid/inventory/backend/workers/internal/alertworker"
 	"github.com/KingWahid/inventory/backend/workers/internal/outboxrelay"
 )
 
@@ -26,8 +27,9 @@ func main() {
 	cfg.SetDefault("WORKER_MODE", "all")
 	cfg.SetDefault("OUTBOX_RELAY_POLL_MS", 500)
 	cfg.SetDefault("OUTBOX_RELAY_BATCH", 100)
+	cfg.SetDefault("ALERT_CONSUMER_NAME", "worker-alerts-1")
 
-	mode := flag.String("mode", cfg.GetString("WORKER_MODE"), "worker mode: all | outbox-relay")
+	mode := flag.String("mode", cfg.GetString("WORKER_MODE"), "worker mode: all | outbox-relay | alerts")
 	flag.Parse()
 
 	log.Printf("worker starting mode=%s", *mode)
@@ -36,41 +38,53 @@ func main() {
 	defer cancel()
 
 	var wg sync.WaitGroup
-	var cleanup func()
+	var cleanups []func()
+
+	switch *mode {
+	case "all", "outbox-relay", "alerts":
+	default:
+		log.Printf("worker mode=%s: no background tasks (waiting for shutdown)", *mode)
+	}
+
+	redisAddr := cfg.GetString("REDIS_ADDR")
+	eventSecret := cfg.GetString("EVENTBUS_HMAC_SECRET")
+
+	var sharedBus *eventbus.Client
+	switch *mode {
+	case "all", "outbox-relay", "alerts":
+		if redisAddr == "" {
+			log.Fatal("REDIS_ADDR is required for this worker mode")
+		}
+		bus, err := eventbus.New(redisAddr)
+		if err != nil {
+			log.Fatalf("redis: %v", err)
+		}
+		sharedBus = bus
+		cleanups = append(cleanups, func() { _ = bus.Close() })
+	}
 
 	if *mode == "all" || *mode == "outbox-relay" {
-		dsn := cfg.GetString("DB_DSN")
-		redisAddr := cfg.GetString("REDIS_ADDR")
-		secret := cfg.GetString("EVENTBUS_HMAC_SECRET")
-		if secret == "" {
+		if eventSecret == "" {
 			log.Fatal("EVENTBUS_HMAC_SECRET is required for outbox relay")
 		}
+		dsn := cfg.GetString("DB_DSN")
 		if dsn == "" {
 			log.Fatal("DB_DSN is required for outbox relay")
-		}
-		if redisAddr == "" {
-			log.Fatal("REDIS_ADDR is required for outbox relay")
 		}
 
 		sqlDB, err := sql.Open("pgx", dsn)
 		if err != nil {
 			log.Fatalf("db open: %v", err)
 		}
+		cleanups = append(cleanups, func() { _ = sqlDB.Close() })
+
 		if err := sqlDB.PingContext(ctx); err != nil {
-			_ = sqlDB.Close()
 			log.Fatalf("db ping: %v", err)
 		}
 
 		gdb, err := postgres.OpenGORM(sqlDB)
 		if err != nil {
-			_ = sqlDB.Close()
 			log.Fatalf("gorm: %v", err)
-		}
-
-		bus, err := eventbus.New(redisAddr)
-		if err != nil {
-			_ = sqlDB.Close()
-			log.Fatalf("redis: %v", err)
 		}
 
 		repo := outboxrepo.New(gdb)
@@ -85,8 +99,8 @@ func main() {
 
 		runner := &outboxrelay.Runner{
 			Repo:   repo,
-			Bus:    bus,
-			Secret: secret,
+			Bus:    sharedBus,
+			Secret: eventSecret,
 			Config: outboxrelay.Config{
 				PollInterval: time.Duration(pollMs) * time.Millisecond,
 				BatchSize:    batch,
@@ -100,11 +114,27 @@ func main() {
 				log.Printf("outbox relay stopped: %v", err)
 			}
 		}()
+	}
 
-		cleanup = func() {
-			_ = bus.Close()
-			_ = sqlDB.Close()
+	if *mode == "all" || *mode == "alerts" {
+		if eventSecret == "" {
+			log.Fatal("EVENTBUS_HMAC_SECRET is required for alert worker (HMAC verify)")
 		}
+		if sharedBus == nil {
+			log.Fatal("internal error: redis client missing for alerts")
+		}
+		conName := cfg.GetString("ALERT_CONSUMER_NAME")
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := alertworker.Run(ctx, sharedBus, eventSecret, alertworker.StubHandler, alertworker.Config{
+				ConsumerName: conName,
+			})
+			if err != nil && err != context.Canceled {
+				log.Printf("alert worker stopped: %v", err)
+			}
+		}()
 	}
 
 	sig := make(chan os.Signal, 1)
@@ -113,7 +143,7 @@ func main() {
 	log.Println("worker shutting down")
 	cancel()
 	wg.Wait()
-	if cleanup != nil {
-		cleanup()
+	for i := len(cleanups) - 1; i >= 0; i-- {
+		cleanups[i]()
 	}
 }

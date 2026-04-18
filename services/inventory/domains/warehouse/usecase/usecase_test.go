@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	cachepkg "github.com/KingWahid/inventory/backend/pkg/cache"
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/repository"
@@ -64,7 +65,7 @@ func ctxTenant(tenant string) context.Context {
 func TestDeleteWarehouse_RejectsWhenStock(t *testing.T) {
 	wid := uuid.New().String()
 	fr := &fakeRepo{hasStock: true}
-	u := New(fr, nil)
+	u := New(fr, nil, cachepkg.Noop{})
 	err := u.DeleteWarehouse(ctxTenant("tenant-a"), wid)
 	if !errors.Is(err, errorcodes.ErrWarehouseStock) {
 		t.Fatalf("want ErrWarehouseStock got %v", err)
@@ -77,7 +78,7 @@ func TestDeleteWarehouse_RejectsWhenStock(t *testing.T) {
 func TestDeleteWarehouse_SoftDeletesWhenNoStock(t *testing.T) {
 	wid := uuid.New().String()
 	fr := &fakeRepo{hasStock: false}
-	u := New(fr, nil)
+	u := New(fr, nil, cachepkg.Noop{})
 	if err := u.DeleteWarehouse(ctxTenant("tenant-a"), wid); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +88,7 @@ func TestDeleteWarehouse_SoftDeletesWhenNoStock(t *testing.T) {
 }
 
 func TestDeleteWarehouse_TenantMissing(t *testing.T) {
-	u := New(&fakeRepo{}, nil)
+	u := New(&fakeRepo{}, nil, cachepkg.Noop{})
 	err := u.DeleteWarehouse(context.Background(), uuid.New().String())
 	if !errors.Is(err, errorcodes.ErrTenantContextMissing) {
 		t.Fatalf("want ErrTenantContextMissing got %v", err)

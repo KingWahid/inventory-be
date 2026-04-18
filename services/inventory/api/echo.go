@@ -18,9 +18,9 @@ import (
 
 // InventoryPublicPaths skip JWT (exact URL.Path); must align with OpenAPI public probes.
 var InventoryPublicPaths = map[string]struct{}{
-	"/health":                      {},
-	"/ready":                       {},
-	"/api/v1/inventory/health":     {},
+	"/health":                  {},
+	"/ready":                   {},
+	"/api/v1/inventory/health": {},
 }
 
 // NewEcho builds Echo with error handling and lifecycle; routes are registered separately (see fx.RegisterRoutes).

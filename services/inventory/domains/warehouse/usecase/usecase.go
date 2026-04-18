@@ -2,8 +2,10 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
+	cachepkg "github.com/KingWahid/inventory/backend/pkg/cache"
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
@@ -57,11 +59,15 @@ type UpdateWarehouseInput struct {
 type usecase struct {
 	repo     repository.Repository
 	auditLog *logwriter.Writer
+	cache    cachepkg.Cache
 }
 
 // New creates warehouse usecase implementation.
-func New(repo repository.Repository, audit *logwriter.Writer) Usecase {
-	return &usecase{repo: repo, auditLog: audit}
+func New(repo repository.Repository, audit *logwriter.Writer, c cachepkg.Cache) Usecase {
+	if c == nil {
+		c = cachepkg.Noop{}
+	}
+	return &usecase{repo: repo, auditLog: audit, cache: c}
 }
 
 func (u *usecase) Ping() error {
@@ -101,6 +107,15 @@ func (u *usecase) ListWarehouses(ctx context.Context, in ListWarehousesInput) (L
 		order = *in.Order
 	}
 
+	fp := cachepkg.WarehousesFP(page, perPage, search, sort, order)
+	listKey := cachepkg.KeyWarehousesList(tid, fp)
+	if raw, hit, err := u.cache.Get(ctx, listKey); err == nil && hit {
+		var out ListWarehousesOutput
+		if err := json.Unmarshal(raw, &out); err == nil {
+			return out, nil
+		}
+	}
+
 	items, total, err := u.repo.List(ctx, tid, repository.ListFilter{
 		Page:    page,
 		PerPage: perPage,
@@ -112,12 +127,16 @@ func (u *usecase) ListWarehouses(ctx context.Context, in ListWarehousesInput) (L
 		return ListWarehousesOutput{}, err
 	}
 
-	return ListWarehousesOutput{
+	out := ListWarehousesOutput{
 		Items:   items,
 		Total:   total,
 		Page:    int32(page),
 		PerPage: int32(perPage),
-	}, nil
+	}
+	if payload, err := json.Marshal(out); err == nil {
+		_ = u.cache.Set(ctx, listKey, payload, cachepkg.TTLWarehouseList)
+	}
+	return out, nil
 }
 
 func (u *usecase) GetWarehouse(ctx context.Context, warehouseID string) (repository.Warehouse, error) {
@@ -203,6 +222,7 @@ func (u *usecase) UpdateWarehouse(ctx context.Context, warehouseID string, in Up
 			After:    toAuditMap(w),
 		})
 	}
+	u.invalidateAfterWarehouseWrite(ctx, tid)
 	return w, nil
 }
 
@@ -241,5 +261,6 @@ func (u *usecase) DeleteWarehouse(ctx context.Context, warehouseID string) error
 			After:    map[string]any{"deleted": true},
 		})
 	}
+	u.invalidateAfterWarehouseWrite(ctx, tid)
 	return nil
 }

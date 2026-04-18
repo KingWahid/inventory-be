@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 
+	audituc "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/usecase"
 	catalogrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
-	audituc "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/usecase"
+	dashboarduc "github.com/KingWahid/inventory/backend/services/inventory/domains/dashboard/usecase"
 	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
 	movementuc "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/usecase"
 	warehouserepo "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/repository"
@@ -45,4 +46,6 @@ type Service interface {
 	CancelMovement(ctx context.Context, movementID string) (movrepo.Movement, error)
 
 	ListAuditLogs(ctx context.Context, in audituc.ListAuditLogsInput) (audituc.ListAuditLogsOutput, error)
+
+	GetDashboardSummary(ctx context.Context) (dashboarduc.Summary, error)
 }

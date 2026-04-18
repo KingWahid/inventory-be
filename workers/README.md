@@ -1,6 +1,14 @@
 # workers
 
-Background processes: **outbox relay**, stream consumers, scheduled jobs.
+Background processes: **outbox relay**, **alert consumer** (Redis Streams), scheduled jobs.
+
+## Modes
+
+| `WORKER_MODE` / `--mode` | Outbox relay (Postgres → `inventory.events`) | Alert consumer (`XREADGROUP` + HMAC verify) |
+|--------------------------|---------------------------------------------|---------------------------------------------|
+| `all` (default) | yes | yes |
+| `outbox-relay` | yes | no |
+| `alerts` | no | yes |
 
 ## Outbox relay (`--mode=outbox-relay` or `--mode=all`)
 
@@ -15,6 +23,16 @@ Polls `outbox_events` where `published = false`, publishes to Redis Stream **`in
 | `EVENTBUS_HMAC_SECRET` | yes | Shared secret for `eventbus.SignEvent` (same as consumers expected to verify) |
 | `OUTBOX_RELAY_POLL_MS` | no | Idle poll interval when queue empty (default `500`) |
 | `OUTBOX_RELAY_BATCH` | no | Max rows per drain loop (default `100`) |
+
+## Alert worker (`--mode=alerts` or `--mode=all`)
+
+Subscribes to consumer group **`alerts`** on stream **`inventory.events`** (ARCHITECTURE §10). Verifies `event_signature` with `EVENTBUS_HMAC_SECRET`, then runs a **stub** handler for `StockBelowThreshold` (replace with notification integration).
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `REDIS_ADDR` | yes | Same as relay |
+| `EVENTBUS_HMAC_SECRET` | yes | Must match relay signing secret |
+| `ALERT_CONSUMER_NAME` | no | Default `worker-alerts-1` |
 
 ### Manual acceptance (§6.3)
 

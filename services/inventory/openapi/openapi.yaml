@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Inventory API
-  version: 0.7.2
+  version: 0.7.3
   description: |
     Authenticated routes use Bearer JWT; `tenant_id` is taken from the token (ARCHITECTURE §6–§7), not `X-Tenant-Id`.
     JSON errors:  via pkg/common/errorcodes. JSON success: via pkg/common/httpresponse (`success`, `data`, `meta.request_id`, list `meta.pagination`).
@@ -47,6 +47,22 @@ paths:
             text/plain:
               schema:
                 $ref: "#/components/schemas/PlainTextOk"
+  /api/v1/inventory/dashboard/summary:
+    get:
+      operationId: getApiV1InventoryDashboardSummary
+      tags: [dashboard]
+      summary: Dashboard aggregate counts (tenant); summary is cache-aside in Redis ~30s (ARCHITECTURE §13)
+      security:
+        - JwtAuth: []
+      responses:
+        "200":
+          description: Aggregate counts for the current tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummarySuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /api/v1/inventory/categories:
     get:
       operationId: getApiV1InventoryCategories
@@ -902,6 +918,41 @@ components:
           enum: [true]
         data:
           $ref: "#/components/schemas/Warehouse"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    DashboardSummary:
+      type: object
+      required:
+        - total_products
+        - total_warehouses
+        - movements_today
+        - low_stock_count
+      properties:
+        total_products:
+          type: integer
+          format: int64
+          description: Non-deleted products for the tenant
+        total_warehouses:
+          type: integer
+          format: int64
+          description: Active non-deleted warehouses
+        movements_today:
+          type: integer
+          format: int64
+          description: Movements confirmed today (UTC calendar day)
+        low_stock_count:
+          type: integer
+          format: int64
+          description: Products whose total on-hand quantity is below reorder_level
+    DashboardSummarySuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: "#/components/schemas/DashboardSummary"
         meta:
           $ref: "#/components/schemas/SuccessMeta"
     Category:

@@ -5,6 +5,7 @@ import (
 
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	audituc "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/usecase"
+	dashboarduc "github.com/KingWahid/inventory/backend/services/inventory/domains/dashboard/usecase"
 	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
 	movementuc "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/usecase"
 )
@@ -46,4 +47,8 @@ func (movementEmbedNoop) CancelMovement(context.Context, string) (movrepo.Moveme
 
 func (movementEmbedNoop) ListAuditLogs(context.Context, audituc.ListAuditLogsInput) (audituc.ListAuditLogsOutput, error) {
 	return audituc.ListAuditLogsOutput{}, nil
+}
+
+func (movementEmbedNoop) GetDashboardSummary(context.Context) (dashboarduc.Summary, error) {
+	return dashboarduc.Summary{}, nil
 }

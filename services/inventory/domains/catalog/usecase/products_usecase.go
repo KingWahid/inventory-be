@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	cachepkg "github.com/KingWahid/inventory/backend/pkg/cache"
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit/logwriter"
@@ -67,10 +68,21 @@ func (u *usecase) ListProducts(ctx context.Context, in ListProductsInput) (ListP
 	}
 
 	var catFilter *string
+	catFP := ""
 	if in.CategoryID != nil {
 		s := strings.TrimSpace(*in.CategoryID)
 		if s != "" {
 			catFilter = &s
+			catFP = s
+		}
+	}
+
+	fp := cachepkg.ProductsFP(page, perPage, search, sort, order, catFP)
+	listKey := cachepkg.KeyProductsList(tid, fp)
+	if raw, hit, err := u.cache.Get(ctx, listKey); err == nil && hit {
+		var out ListProductsOutput
+		if err := json.Unmarshal(raw, &out); err == nil {
+			return out, nil
 		}
 	}
 
@@ -86,12 +98,16 @@ func (u *usecase) ListProducts(ctx context.Context, in ListProductsInput) (ListP
 		return ListProductsOutput{}, err
 	}
 
-	return ListProductsOutput{
+	out := ListProductsOutput{
 		Items:   items,
 		Total:   total,
 		Page:    int32(page),
 		PerPage: int32(perPage),
-	}, nil
+	}
+	if payload, err := json.Marshal(out); err == nil {
+		_ = u.cache.Set(ctx, listKey, payload, cachepkg.TTLProductList)
+	}
+	return out, nil
 }
 
 func (u *usecase) GetProduct(ctx context.Context, productID string) (repository.Product, error) {
@@ -99,7 +115,22 @@ func (u *usecase) GetProduct(ctx context.Context, productID string) (repository.
 	if err != nil {
 		return repository.Product{}, err
 	}
-	return u.repo.GetProductByID(ctx, tid, strings.TrimSpace(productID))
+	id := strings.TrimSpace(productID)
+	ckey := cachepkg.KeyProduct(tid, id)
+	if raw, hit, err := u.cache.Get(ctx, ckey); err == nil && hit {
+		var p repository.Product
+		if err := json.Unmarshal(raw, &p); err == nil {
+			return p, nil
+		}
+	}
+	p, err := u.repo.GetProductByID(ctx, tid, id)
+	if err != nil {
+		return repository.Product{}, err
+	}
+	if payload, err := json.Marshal(p); err == nil {
+		_ = u.cache.Set(ctx, ckey, payload, cachepkg.TTLProductOne)
+	}
+	return p, nil
 }
 
 func (u *usecase) ensureCategory(ctx context.Context, tenantID string, categoryID *string) error {
@@ -170,6 +201,7 @@ func (u *usecase) CreateProduct(ctx context.Context, in CreateProductInput) (rep
 			After:    toAuditMap(p),
 		})
 	}
+	u.invalidateAfterProductWrite(ctx, tid, p.ID)
 	return p, nil
 }
 
@@ -247,6 +279,7 @@ func (u *usecase) UpdateProduct(ctx context.Context, productID string, in Update
 			After:    toAuditMap(p),
 		})
 	}
+	u.invalidateAfterProductWrite(ctx, tid, id)
 	return p, nil
 }
 
@@ -285,6 +318,7 @@ func (u *usecase) DeleteProduct(ctx context.Context, productID string) error {
 			After:    map[string]any{"deleted": true},
 		})
 	}
+	u.invalidateAfterProductWrite(ctx, tid, id)
 	return nil
 }
 
@@ -311,5 +345,6 @@ func (u *usecase) RestoreProduct(ctx context.Context, productID string) (reposit
 			After:    toAuditMap(p),
 		})
 	}
+	u.invalidateAfterProductWrite(ctx, tid, id)
 	return p, nil
 }

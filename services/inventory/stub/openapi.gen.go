@@ -32,6 +32,11 @@ const (
 	CategorySuccessEnvelopeSuccessTrue CategorySuccessEnvelopeSuccess = true
 )
 
+// Defines values for DashboardSummarySuccessEnvelopeSuccess.
+const (
+	DashboardSummarySuccessEnvelopeSuccessTrue DashboardSummarySuccessEnvelopeSuccess = true
+)
+
 // Defines values for MovementStatus.
 const (
 	MovementStatusCancelled MovementStatus = "cancelled"
@@ -74,7 +79,7 @@ const (
 
 // Defines values for WarehouseSuccessEnvelopeSuccess.
 const (
-	True WarehouseSuccessEnvelopeSuccess = true
+	WarehouseSuccessEnvelopeSuccessTrue WarehouseSuccessEnvelopeSuccess = true
 )
 
 // Defines values for Order.
@@ -211,6 +216,33 @@ type CategoryUpdateRequest struct {
 	ParentId    *openapi_types.UUID `json:"parent_id"`
 	SortOrder   *int32              `json:"sort_order,omitempty"`
 }
+
+// DashboardSummary defines model for DashboardSummary.
+type DashboardSummary struct {
+	// LowStockCount Products whose total on-hand quantity is below reorder_level
+	LowStockCount int64 `json:"low_stock_count"`
+
+	// MovementsToday Movements confirmed today (UTC calendar day)
+	MovementsToday int64 `json:"movements_today"`
+
+	// TotalProducts Non-deleted products for the tenant
+	TotalProducts int64 `json:"total_products"`
+
+	// TotalWarehouses Active non-deleted warehouses
+	TotalWarehouses int64 `json:"total_warehouses"`
+}
+
+// DashboardSummarySuccessEnvelope defines model for DashboardSummarySuccessEnvelope.
+type DashboardSummarySuccessEnvelope struct {
+	Data DashboardSummary `json:"data"`
+
+	// Meta §9 meta for JSON success responses (list endpoints include pagination).
+	Meta    *SuccessMeta                           `json:"meta,omitempty"`
+	Success DashboardSummarySuccessEnvelopeSuccess `json:"success"`
+}
+
+// DashboardSummarySuccessEnvelopeSuccess defines model for DashboardSummarySuccessEnvelope.Success.
+type DashboardSummarySuccessEnvelopeSuccess bool
 
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
@@ -665,6 +697,9 @@ type ServerInterface interface {
 	// Update category
 	// (PUT /api/v1/inventory/categories/{categoryId})
 	PutApiV1InventoryCategoriesCategoryId(ctx echo.Context, categoryId CategoryId) error
+	// Dashboard aggregate counts (tenant); summary is cache-aside in Redis ~30s (ARCHITECTURE §13)
+	// (GET /api/v1/inventory/dashboard/summary)
+	GetApiV1InventoryDashboardSummary(ctx echo.Context) error
 	// Inventory service liveness under API prefix
 	// (GET /api/v1/inventory/health)
 	GetInventoryHealth(ctx echo.Context) error
@@ -959,6 +994,17 @@ func (w *ServerInterfaceWrapper) PutApiV1InventoryCategoriesCategoryId(ctx echo.
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PutApiV1InventoryCategoriesCategoryId(ctx, categoryId)
+	return err
+}
+
+// GetApiV1InventoryDashboardSummary converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiV1InventoryDashboardSummary(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(JwtAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiV1InventoryDashboardSummary(ctx)
 	return err
 }
 
@@ -1523,6 +1569,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.DeleteApiV1InventoryCategoriesCategoryId)
 	router.GET(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.GetApiV1InventoryCategoriesCategoryId)
 	router.PUT(baseURL+"/api/v1/inventory/categories/:categoryId", wrapper.PutApiV1InventoryCategoriesCategoryId)
+	router.GET(baseURL+"/api/v1/inventory/dashboard/summary", wrapper.GetApiV1InventoryDashboardSummary)
 	router.GET(baseURL+"/api/v1/inventory/health", wrapper.GetInventoryHealth)
 	router.GET(baseURL+"/api/v1/inventory/movements", wrapper.GetApiV1InventoryMovements)
 	router.POST(baseURL+"/api/v1/inventory/movements/adjustment", wrapper.PostApiV1InventoryMovementsAdjustment)

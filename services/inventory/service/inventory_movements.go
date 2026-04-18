@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	movementuc "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/usecase"
 	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
+	movementuc "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/usecase"
 )
 
 func (s *InventoryService) CreateInbound(ctx context.Context, destinationWarehouseID string, in movementuc.CreateMovementBase) (movrepo.Movement, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	cachepkg "github.com/KingWahid/inventory/backend/pkg/cache"
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
@@ -74,6 +75,7 @@ type usecase struct {
 	auditLog *flowaudit.Writer
 	outbox   outboxrepo.Repository
 	tx       transaction.Manager
+	cache    cachepkg.Cache
 }
 
 // New creates movement usecase.
@@ -85,10 +87,14 @@ func New(
 	auditLog *flowaudit.Writer,
 	outbox outboxrepo.Repository,
 	tx transaction.Manager,
+	cache cachepkg.Cache,
 ) Usecase {
+	if cache == nil {
+		cache = cachepkg.Noop{}
+	}
 	return &usecase{
 		move: move, stock: stock, wh: wh, catalog: catalog,
-		auditLog: auditLog, outbox: outbox, tx: tx,
+		auditLog: auditLog, outbox: outbox, tx: tx, cache: cache,
 	}
 }
 
@@ -417,5 +423,6 @@ func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movre
 	if err != nil {
 		return movrepo.Movement{}, err
 	}
+	_ = u.cache.Delete(ctx, cachepkg.KeyDashboardSummary(tid))
 	return u.move.GetByID(ctx, tid, mid)
 }
