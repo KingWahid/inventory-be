@@ -3,9 +3,11 @@ package fx
 
 import (
 	"github.com/labstack/echo/v4"
+	goredis "github.com/redis/go-redis/v9"
 	uberfx "go.uber.org/fx"
 	"go.uber.org/zap"
 
+	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/services/inventory/api"
 	"github.com/KingWahid/inventory/backend/services/inventory/service"
 	"github.com/KingWahid/inventory/backend/services/inventory/stub"
@@ -18,6 +20,8 @@ type HandlerParams struct {
 	Echo *echo.Echo
 	Svc  service.Service
 	Log  *zap.Logger
+	Rdb  *goredis.Client
+	Jwt  *commonjwt.Service
 }
 
 // RegisterRoutes wires ServerHandler and mounts routes from OpenAPI (stub.RegisterHandlers).
@@ -26,6 +30,7 @@ func RegisterRoutes(params HandlerParams) {
 
 	handler := api.NewServerHandler(params.Svc)
 	stub.RegisterHandlers(params.Echo, handler)
+	params.Echo.GET("/api/v1/inventory/sse/stock", api.SSEStock(params.Rdb, params.Jwt))
 
 	params.Log.Info("inventory routes registered")
 }

@@ -8,6 +8,7 @@ import (
 	infraredis "github.com/KingWahid/inventory/backend/infra/redis"
 	cachepkg "github.com/KingWahid/inventory/backend/pkg/cache"
 	commonlogger "github.com/KingWahid/inventory/backend/pkg/common/logger"
+	"github.com/KingWahid/inventory/backend/pkg/realtime/stockpub"
 	"github.com/KingWahid/inventory/backend/services/inventory/api"
 	"github.com/KingWahid/inventory/backend/services/inventory/config"
 	"github.com/KingWahid/inventory/backend/services/inventory/domains/audit"
@@ -38,6 +39,9 @@ var Module = uberfx.Options(
 		),
 		func(rdb *goredis.Client) cachepkg.Cache {
 			return cachepkg.NewRedis(rdb)
+		},
+		func(rdb *goredis.Client) stockpub.Publisher {
+			return stockpub.New(rdb)
 		},
 	),
 	commonlogger.Module,

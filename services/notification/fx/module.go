@@ -34,4 +34,5 @@ var Module = uberfx.Options(
 	service.Module,
 	api.EchoModule,
 	HandlerModule,
+	uberfx.Invoke(RegisterStreamConsumer),
 )

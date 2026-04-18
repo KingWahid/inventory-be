@@ -8,6 +8,7 @@ import (
 	cachepkg "github.com/KingWahid/inventory/backend/pkg/cache"
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
+	"github.com/KingWahid/inventory/backend/pkg/realtime/stockpub"
 	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
 	"github.com/golang-jwt/jwt/v4"
 )
@@ -72,7 +73,7 @@ func TestCancelMovement_confirmedFails(t *testing.T) {
 		&stubMovRepo{
 			first: movrepo.Movement{Status: movrepo.StatusConfirmed},
 		},
-		nil, nil, nil, nil, nil, nil, cachepkg.Noop{},
+		nil, nil, nil, nil, nil, nil, cachepkg.Noop{}, stockpub.Noop{},
 	)
 	_, err := u.CancelMovement(ctx, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 	if !errors.Is(err, errorcodes.ErrMovementDraft) {
@@ -92,7 +93,7 @@ func TestCancelMovement_draftOK(t *testing.T) {
 			first:  movrepo.Movement{ID: mid, Status: movrepo.StatusDraft},
 			second: movrepo.Movement{ID: mid, Status: movrepo.StatusCancelled},
 		},
-		nil, nil, nil, nil, nil, nil, cachepkg.Noop{},
+		nil, nil, nil, nil, nil, nil, cachepkg.Noop{}, stockpub.Noop{},
 	)
 	m, err := u.CancelMovement(ctx, mid)
 	if err != nil {

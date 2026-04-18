@@ -2,6 +2,13 @@
 
 Background processes: **outbox relay**, **alert consumer** (Redis Streams), scheduled jobs.
 
+## Coexistence with notification service
+
+The inventory API publishes signed events to Redis Stream **`inventory.events`**. Multiple **consumer groups** on the same stream each maintain their own pending entries; messages are not “stolen” between groups, but **each group will still receive and process the same logical events**. The **notification** service (see `services/notification`) runs a consumer in group **`notification`** and performs dispatch (structured logs + optional webhook).
+
+- **Recommended for production**: run this worker as **`outbox-relay` only** when the notification service is handling alert delivery, so you do not run two separate processes that both treat `StockBelowThreshold` as delivery work (duplicate logs / duplicate side effects).
+- If you run **`--mode=all`** or **`--mode=alerts`** **and** notification with the stream consumer enabled, expect **duplicate processing** (stub alert logs from this worker plus notification dispatch). Consumer group names differ (`alerts` vs `notification`), but semantics overlap.
+
 ## Modes
 
 | `WORKER_MODE` / `--mode` | Outbox relay (Postgres → `inventory.events`) | Alert consumer (`XREADGROUP` + HMAC verify) |
@@ -33,6 +40,7 @@ Subscribes to consumer group **`alerts`** on stream **`inventory.events`** (ARCH
 | `REDIS_ADDR` | yes | Same as relay |
 | `EVENTBUS_HMAC_SECRET` | yes | Must match relay signing secret |
 | `ALERT_CONSUMER_NAME` | no | Default `worker-alerts-1` |
+| `ALERT_CONSUMER_GROUP` | no | Redis consumer group name (default `alerts`; use a distinct name only if you need multiple alert-style workers) |
 
 ### Manual acceptance (§6.3)
 

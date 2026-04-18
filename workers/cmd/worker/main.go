@@ -17,7 +17,7 @@ import (
 	"github.com/KingWahid/inventory/backend/infra/postgres"
 	"github.com/KingWahid/inventory/backend/pkg/eventbus"
 	outboxrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/outbox/repository"
-	"github.com/KingWahid/inventory/backend/workers/internal/alertworker"
+	"github.com/KingWahid/inventory/backend/pkg/alertworker"
 	"github.com/KingWahid/inventory/backend/workers/internal/outboxrelay"
 )
 
@@ -28,6 +28,7 @@ func main() {
 	cfg.SetDefault("OUTBOX_RELAY_POLL_MS", 500)
 	cfg.SetDefault("OUTBOX_RELAY_BATCH", 100)
 	cfg.SetDefault("ALERT_CONSUMER_NAME", "worker-alerts-1")
+	cfg.SetDefault("ALERT_CONSUMER_GROUP", eventbus.GroupAlerts())
 
 	mode := flag.String("mode", cfg.GetString("WORKER_MODE"), "worker mode: all | outbox-relay | alerts")
 	flag.Parse()
@@ -124,12 +125,14 @@ func main() {
 			log.Fatal("internal error: redis client missing for alerts")
 		}
 		conName := cfg.GetString("ALERT_CONSUMER_NAME")
+		alertGroup := cfg.GetString("ALERT_CONSUMER_GROUP")
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			err := alertworker.Run(ctx, sharedBus, eventSecret, alertworker.StubHandler, alertworker.Config{
 				ConsumerName: conName,
+				Group:        alertGroup,
 			})
 			if err != nil && err != context.Canceled {
 				log.Printf("alert worker stopped: %v", err)

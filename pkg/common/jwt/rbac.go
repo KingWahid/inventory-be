@@ -9,11 +9,11 @@ import (
 
 // Permission constants (ARCHITECTURE §7). Use these instead of raw strings in usecases.
 const (
-	PermProductRead       = "product:read"
-	PermProductWrite      = "product:write"
-	PermMovementWrite     = "movement:write"
-	PermMovementConfirm   = "movement:confirm"
-	PermReportRead        = "report:read"
+	PermProductRead     = "product:read"
+	PermProductWrite    = "product:write"
+	PermMovementWrite   = "movement:write"
+	PermMovementConfirm = "movement:confirm"
+	PermReportRead      = "report:read"
 )
 
 // PermissionsForRole expands a DB role string into JWT permission claims at login time.

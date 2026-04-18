@@ -9,6 +9,7 @@ import (
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	"github.com/KingWahid/inventory/backend/pkg/common/pagination"
 	"github.com/KingWahid/inventory/backend/pkg/database/transaction"
+	"github.com/KingWahid/inventory/backend/pkg/realtime/stockpub"
 	flowaudit "github.com/KingWahid/inventory/backend/services/inventory/domains/audit/logwriter"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
 	movrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/movement/repository"
@@ -76,6 +77,7 @@ type usecase struct {
 	outbox   outboxrepo.Repository
 	tx       transaction.Manager
 	cache    cachepkg.Cache
+	stockPub stockpub.Publisher
 }
 
 // New creates movement usecase.
@@ -88,13 +90,17 @@ func New(
 	outbox outboxrepo.Repository,
 	tx transaction.Manager,
 	cache cachepkg.Cache,
+	stockPub stockpub.Publisher,
 ) Usecase {
 	if cache == nil {
 		cache = cachepkg.Noop{}
 	}
+	if stockPub == nil {
+		stockPub = stockpub.Noop{}
+	}
 	return &usecase{
 		move: move, stock: stock, wh: wh, catalog: catalog,
-		auditLog: auditLog, outbox: outbox, tx: tx, cache: cache,
+		auditLog: auditLog, outbox: outbox, tx: tx, cache: cache, stockPub: stockPub,
 	}
 }
 
@@ -397,6 +403,7 @@ func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movre
 	}
 	mid := strings.TrimSpace(movementID)
 
+	var txChanges []stockQtyChange
 	err = u.tx.RunInTx(ctx, func(txCtx context.Context) error {
 		mv, err := u.move.GetByIDForUpdate(txCtx, tid, mid)
 		if err != nil {
@@ -412,6 +419,7 @@ func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movre
 		if err != nil {
 			return err
 		}
+		txChanges = changes
 		if err := u.move.UpdateStatus(txCtx, tid, mid, movrepo.StatusDraft, movrepo.StatusConfirmed); err != nil {
 			return err
 		}
@@ -425,5 +433,21 @@ func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movre
 	}
 	_ = u.cache.Delete(ctx, cachepkg.KeyDashboardSummary(tid))
 	_ = u.cache.DeletePattern(ctx, cachepkg.PatternDashboardMovementsChart(tid))
+	if len(txChanges) > 0 {
+		_ = u.stockPub.PublishStockChanged(ctx, tid, mid, stockChangesToPub(txChanges))
+	}
 	return u.move.GetByID(ctx, tid, mid)
+}
+
+func stockChangesToPub(in []stockQtyChange) []stockpub.StockChange {
+	out := make([]stockpub.StockChange, 0, len(in))
+	for _, c := range in {
+		out = append(out, stockpub.StockChange{
+			WarehouseID: c.WarehouseID,
+			ProductID:   c.ProductID,
+			OldQty:      c.OldQty,
+			NewQty:      c.NewQty,
+		})
+	}
+	return out
 }
