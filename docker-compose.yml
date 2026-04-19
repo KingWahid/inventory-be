@@ -59,7 +59,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 20s
+      # Air cold build + go mod download can exceed 20s on first start
+      start_period: 120s
 
   notification-service:
     build:
@@ -71,6 +72,7 @@ services:
     environment:
       APP_ENV: development
       APP_PORT: "8081"
+      DB_DSN: host=postgres user=inventory password=inventory_password dbname=inventory sslmode=disable
       REDIS_ADDR: redis:6379
     expose:
       - "8081"
@@ -79,6 +81,8 @@ services:
     volumes:
       - ./:/src
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -86,7 +90,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 20s
+      start_period: 120s
 
   authentication-service:
     build:
@@ -117,34 +121,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 20s
-
-  common-service:
-    build:
-      context: .
-      dockerfile: services/common/Dockerfile
-      target: dev
-    working_dir: /src
-    command: ["air", "-c", "services/common/air.toml"]
-    environment:
-      APP_ENV: development
-      APP_PORT: "8083"
-      REDIS_ADDR: redis:6379
-    expose:
-      - "8083"
-    ports:
-      - "8083:8083"
-    volumes:
-      - ./:/src
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8083/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 20s
+      start_period: 120s
 
   worker:
     build:
@@ -186,8 +163,6 @@ services:
       notification-service:
         condition: service_healthy
       authentication-service:
-        condition: service_healthy
-      common-service:
         condition: service_healthy
 
 volumes:

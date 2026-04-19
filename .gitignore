@@ -10,6 +10,7 @@
 # Build directories
 bin/
 dist/
+tmp/
 
 # Coverage
 coverage.out

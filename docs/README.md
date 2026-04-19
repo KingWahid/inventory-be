@@ -1,6 +1,6 @@
 # Backend Docs Index
 
-Dokumen di folder ini adalah panduan implementasi. Untuk urutan kerja proyek inventory, checklist utama tetap di `BACKEND_TASKS.md`.
+Dokumen di folder ini adalah panduan implementasi. Untuk urutan kerja proyek inventory, checklist utama tetap di `BACKEND_TASKS.md`. Untuk tugas UI (Next.js), lihat [`frontend/FRONTEND_TASKS.md`](../../frontend/FRONTEND_TASKS.md).
 
 ## Catatan pola repo ini
 
