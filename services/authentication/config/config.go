@@ -24,7 +24,7 @@ func New() (*Config, error) {
 	v.SetDefault("APP_PORT", "8082")
 	v.SetDefault("APP_ENV", "development")
 	v.SetDefault("JWT_SECRET", "change-me-in-production")
-	v.SetDefault("JWT_ACCESS_TTL_SECONDS", 900)
+	v.SetDefault("JWT_ACCESS_TTL_SECONDS", 86400) // 24h
 	v.SetDefault("JWT_REFRESH_TTL_SECONDS", 604800)
 
 	return &Config{

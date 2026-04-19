@@ -36,6 +36,9 @@ func (s *SeedService) Run(ctx context.Context) error {
 	if err = s.seedAdminUser(ctx, tx, tenantID); err != nil {
 		return err
 	}
+	if err = s.seedExtraUsers(ctx, tx, tenantID); err != nil {
+		return err
+	}
 
 	categoryIDs, err := s.seedCategories(ctx, tx, tenantID)
 	if err != nil {
@@ -47,6 +50,27 @@ func (s *SeedService) Run(ctx context.Context) error {
 	}
 
 	if err = s.seedWarehouses(ctx, tx, tenantID); err != nil {
+		return err
+	}
+
+	productBySKU, err := s.loadProductSKUs(ctx, tx, tenantID)
+	if err != nil {
+		return fmt.Errorf("load products: %w", err)
+	}
+	warehouseByCode, err := s.loadWarehouseCodes(ctx, tx, tenantID)
+	if err != nil {
+		return fmt.Errorf("load warehouses: %w", err)
+	}
+	adminUserID, err := s.getUserID(ctx, tx, tenantID, adminEmail)
+	if err != nil {
+		return fmt.Errorf("resolve admin user id: %w", err)
+	}
+
+	if err = s.seedMovementsAndStock(ctx, tx, tenantID, adminUserID, productBySKU, warehouseByCode); err != nil {
+		return err
+	}
+
+	if err = s.seedAuditSamples(ctx, tx, tenantID, adminUserID); err != nil {
 		return err
 	}
 
@@ -111,7 +135,7 @@ func (s *SeedService) seedTenant(ctx context.Context, tx *sql.Tx) (string, error
 }
 
 func (s *SeedService) seedAdminUser(ctx context.Context, tx *sql.Tx, tenantID string) error {
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(devUserPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}
@@ -132,6 +156,33 @@ func (s *SeedService) seedAdminUser(ctx context.Context, tx *sql.Tx, tenantID st
 		return fmt.Errorf("upsert admin user: %w", err)
 	}
 
+	return nil
+}
+
+func (s *SeedService) seedExtraUsers(ctx context.Context, tx *sql.Tx, tenantID string) error {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(devUserPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	hashStr := string(passwordHash)
+
+	for _, u := range demoExtraUsers {
+		_, err = tx.ExecContext(
+			ctx,
+			`INSERT INTO users (tenant_id, email, password_hash, role, full_name)
+			 VALUES ($1, $2, $3, $4, $5)
+			 ON CONFLICT (tenant_id, email)
+			 DO UPDATE SET
+			   password_hash = EXCLUDED.password_hash,
+			   role = EXCLUDED.role,
+			   full_name = EXCLUDED.full_name,
+			   updated_at = NOW()`,
+			tenantID, u.Email, hashStr, u.Role, u.FullName,
+		)
+		if err != nil {
+			return fmt.Errorf("upsert user %s: %w", u.Email, err)
+		}
+	}
 	return nil
 }
 

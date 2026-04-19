@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
@@ -44,6 +45,26 @@ func NewEcho(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger, jwtSvc *commo
 	return e
 }
 
+// Throttle successful probe logs so Docker/K8s intervals (~5s) do not flood output.
+var (
+	probeLogMu       sync.Mutex
+	probeLastSuccess time.Time
+)
+
+const probeSuccessLogInterval = 30 * time.Minute
+
+func probeLogQuiet(method, rawPath string) bool {
+	if method != http.MethodGet {
+		return false
+	}
+	switch rawPath {
+	case "/health", "/ready", "/api/v1/auth/health":
+		return true
+	default:
+		return false
+	}
+}
+
 func requestLoggerMiddleware(log *zap.Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -65,6 +86,19 @@ func requestLoggerMiddleware(log *zap.Logger) echo.MiddlewareFunc {
 				fields = append(fields, zap.Error(err))
 				log.Warn("request completed with error", fields...)
 				return err
+			}
+			if probeLogQuiet(req.Method, req.URL.Path) {
+				var shouldLog bool
+				probeLogMu.Lock()
+				if probeLastSuccess.IsZero() || time.Since(probeLastSuccess) >= probeSuccessLogInterval {
+					shouldLog = true
+					probeLastSuccess = time.Now()
+				}
+				probeLogMu.Unlock()
+				if shouldLog {
+					log.Debug("request completed", fields...)
+				}
+				return nil
 			}
 			log.Info("request completed", fields...)
 			return nil

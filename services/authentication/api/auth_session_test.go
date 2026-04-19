@@ -27,7 +27,7 @@ func TestPostApiV1AuthRefresh_SuccessEnvelope(t *testing.T) {
 				AccessToken:  "new-access",
 				RefreshToken: "new-refresh",
 				TokenType:    "Bearer",
-				ExpiresIn:    900,
+				ExpiresIn:    86400,
 			}, nil
 		},
 	})

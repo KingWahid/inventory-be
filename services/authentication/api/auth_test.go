@@ -89,7 +89,7 @@ func TestAuthenticationEndpointContract(t *testing.T) {
 					AccessToken:  "token-ok",
 					RefreshToken: "refresh-ok",
 					TokenType:    "Bearer",
-					ExpiresIn:    900,
+					ExpiresIn:    86400,
 				}, nil
 			}
 		},

@@ -43,6 +43,39 @@ curl -sS "$BASE/api/v1/inventory/categories?page=1&per_page=20" \
   -H "X-Request-Id: demo-$(date +%s)"
 ```
 
+### Demo DB seed (inventory + movements)
+
+From [`infra/database/cmd/seed`](infra/database/cmd/seed): apply **after Goose migrations**. Requires **`DB_DSN`** (same as Goose / services).
+
+```bash
+# From repo backend/ (Makefile sets DB_DSN if you export it):
+export DB_DSN='host=localhost ...'   # postgres URL
+make seed-mock
+
+# Or directly:
+go run ./infra/database/cmd/seed --mode seed
+```
+
+**Rollback** demo tenant only (CASCADE wipes users, movements, stock, audit for that tenant):
+
+```bash
+make rollback-mock
+# or: go run ./infra/database/cmd/seed --mode rollback
+```
+
+What it loads (single transaction):
+
+| Area | Contents |
+|------|-----------|
+| Tenant | **Demo Tenant** (`slug` `demo-tenant-seed`) |
+| Users | `admin@demo.local`, `staff@demo.local`, `viewer@demo.local` — dev password **`admin123`** |
+| Masters | Categories, products (7 SKUs), warehouses **WH-JKT-01**, **WH-BDG-01**, **WH-SBY-01** |
+| Movements | Confirmed inbound/transfer/outbound/adjustment + one **draft** + one **cancelled** (`reference_number` prefix **`SEED-`**) |
+| Stock | `stock_balances` replayed for confirmed flows (each run **clears** stock for the tenant, deletes `SEED-*` movements, then re-inserts) |
+| Audit | Sample `audit_logs` rows for list endpoints |
+
+Seeding is **SQL-only**: it does **not** write `outbox_events` (workers) the way `POST …/confirm` does in the inventory API.
+
 ### Refresh, `/me`, logout (Kong)
 
 After login, `data.refresh_token` is stored server-side (session row); use it **without** a Bearer header on refresh.
