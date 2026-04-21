@@ -26,6 +26,7 @@ func rowToProduct(m productRow) Product {
 		Unit:         m.Unit,
 		Price:        m.Price,
 		ReorderLevel: m.ReorderLevel,
+		CurrentStock: 0,
 		Metadata:     meta,
 		CreatedAt:    m.CreatedAt,
 		UpdatedAt:    m.UpdatedAt,
@@ -109,6 +110,36 @@ func (r *repository) ListProducts(ctx context.Context, tenantID string, f ListPr
 	for i := range rows {
 		out = append(out, rowToProduct(rows[i]))
 	}
+	if len(rows) == 0 {
+		return out, total, nil
+	}
+
+	productIDs := make([]string, 0, len(rows))
+	for i := range rows {
+		productIDs = append(productIDs, rows[i].ID)
+	}
+
+	type stockAggRow struct {
+		ProductID string `gorm:"column:product_id"`
+		Qty       int64  `gorm:"column:qty"`
+	}
+	var stockRows []stockAggRow
+	if err := r.db.WithContext(ctx).
+		Table("stock_balances").
+		Select("product_id::text AS product_id, COALESCE(SUM(quantity), 0)::bigint AS qty").
+		Where("tenant_id = ? AND product_id IN ?", tenantID, productIDs).
+		Group("product_id").
+		Scan(&stockRows).Error; err != nil {
+		return nil, 0, err
+	}
+	stockByProductID := make(map[string]int64, len(stockRows))
+	for i := range stockRows {
+		stockByProductID[strings.TrimSpace(stockRows[i].ProductID)] = stockRows[i].Qty
+	}
+	for i := range out {
+		out[i].CurrentStock = stockByProductID[strings.TrimSpace(out[i].ID)]
+	}
+
 	return out, total, nil
 }
 

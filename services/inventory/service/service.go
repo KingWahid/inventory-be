@@ -49,4 +49,5 @@ type Service interface {
 
 	GetDashboardSummary(ctx context.Context) (dashboarduc.Summary, error)
 	GetDashboardMovementsChart(ctx context.Context, period string) (dashboarduc.MovementChart, error)
+	GetDashboardStorageUtilization(ctx context.Context, limit int) ([]dashboarduc.StorageUtilizationRow, error)
 }

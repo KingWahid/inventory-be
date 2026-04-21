@@ -14,6 +14,7 @@ import (
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	catalogrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
+	dashboarduc "github.com/KingWahid/inventory/backend/services/inventory/domains/dashboard/usecase"
 	warehouserepo "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/repository"
 	warehouseuc "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/usecase"
 	"github.com/KingWahid/inventory/backend/services/inventory/stub"
@@ -83,6 +84,10 @@ func (warehouseDelSvc) UpdateWarehouse(context.Context, string, warehouseuc.Upda
 
 func (warehouseDelSvc) DeleteWarehouse(context.Context, string) error {
 	return errorcodes.ErrWarehouseStock.WithDetails(map[string]any{"warehouse_id": "x"})
+}
+
+func (warehouseDelSvc) GetDashboardStorageUtilization(context.Context, int) ([]dashboarduc.StorageUtilizationRow, error) {
+	return nil, nil
 }
 
 func TestWarehouseHandlers_DeleteBlocked422(t *testing.T) {

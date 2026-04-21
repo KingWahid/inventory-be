@@ -79,6 +79,7 @@ type Product struct {
 	Unit         string
 	Price        float64
 	ReorderLevel int32
+	CurrentStock int64
 	Metadata     json.RawMessage
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

@@ -15,6 +15,7 @@ import (
 	commonjwt "github.com/KingWahid/inventory/backend/pkg/common/jwt"
 	catalogrepo "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/repository"
 	cataloguc "github.com/KingWahid/inventory/backend/services/inventory/domains/catalog/usecase"
+	dashboarduc "github.com/KingWahid/inventory/backend/services/inventory/domains/dashboard/usecase"
 	warehouserepo "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/repository"
 	warehouseuc "github.com/KingWahid/inventory/backend/services/inventory/domains/warehouse/usecase"
 	"github.com/KingWahid/inventory/backend/services/inventory/stub"
@@ -87,6 +88,10 @@ func (e *errOrListSvc) UpdateWarehouse(context.Context, string, warehouseuc.Upda
 }
 
 func (e *errOrListSvc) DeleteWarehouse(context.Context, string) error { return nil }
+
+func (e *errOrListSvc) GetDashboardStorageUtilization(context.Context, int) ([]dashboarduc.StorageUtilizationRow, error) {
+	return nil, nil
+}
 
 func TestCategoryHandlers_ListOK(t *testing.T) {
 	jwtSvc, err := commonjwt.NewService("cat-hdl-jwt-secret-32bytes-min", time.Hour, time.Hour)

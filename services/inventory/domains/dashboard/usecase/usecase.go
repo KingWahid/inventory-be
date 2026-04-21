@@ -19,10 +19,19 @@ type MovementChart struct {
 	Points []dashrepo.MovementChartPoint `json:"points"`
 }
 
+type StorageUtilizationRow struct {
+	WarehouseID   string `json:"warehouse_id"`
+	WarehouseCode string `json:"warehouse_code"`
+	WarehouseName string `json:"warehouse_name"`
+	OnHandQty     int64  `json:"on_hand_qty"`
+	Percent       int32  `json:"percent"`
+}
+
 // Usecase returns cached dashboard aggregates (TTL §13).
 type Usecase interface {
 	GetDashboardSummary(ctx context.Context) (Summary, error)
 	GetDashboardMovementsChart(ctx context.Context, periodParam string) (MovementChart, error)
+	GetStorageUtilization(ctx context.Context, limit int) ([]StorageUtilizationRow, error)
 }
 
 type usecase struct {
@@ -84,6 +93,28 @@ func (u *usecase) GetDashboardMovementsChart(ctx context.Context, periodParam st
 	out := MovementChart{Period: string(period), Points: points}
 	if b, err := json.Marshal(out); err == nil {
 		_ = u.cache.Set(ctx, key, b, cachepkg.TTLDashboardChart)
+	}
+	return out, nil
+}
+
+func (u *usecase) GetStorageUtilization(ctx context.Context, limit int) ([]StorageUtilizationRow, error) {
+	tid, err := commonjwt.TenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := u.repo.GetStorageUtilization(ctx, tid, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]StorageUtilizationRow, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, StorageUtilizationRow{
+			WarehouseID:   r.WarehouseID,
+			WarehouseCode: r.WarehouseCode,
+			WarehouseName: r.WarehouseName,
+			OnHandQty:     r.OnHandQty,
+			Percent:       r.Percent,
+		})
 	}
 	return out, nil
 }

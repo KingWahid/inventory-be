@@ -14,13 +14,10 @@ import (
 // GetApiV1InventoryCategories handles GET /api/v1/inventory/categories.
 func (h *ServerHandler) GetApiV1InventoryCategories(c echo.Context, params stub.GetApiV1InventoryCategoriesParams) error {
 	ctx := c.Request().Context()
+	page, perPage := resolvePagePerPage(c, params.Page, params.PerPage)
 	in := cataloguc.ListCategoriesInput{}
-	if params.Page != nil {
-		in.Page = params.Page
-	}
-	if params.PerPage != nil {
-		in.PerPage = params.PerPage
-	}
+	in.Page = &page
+	in.PerPage = &perPage
 	if params.Search != nil {
 		s := string(*params.Search)
 		in.Search = &s
@@ -127,13 +124,10 @@ func (h *ServerHandler) PutApiV1InventoryCategoriesCategoryId(c echo.Context, ca
 // GetApiV1InventoryProducts handles GET /api/v1/inventory/products.
 func (h *ServerHandler) GetApiV1InventoryProducts(c echo.Context, params stub.GetApiV1InventoryProductsParams) error {
 	ctx := c.Request().Context()
+	page, perPage := resolvePagePerPage(c, params.Page, params.PerPage)
 	in := cataloguc.ListProductsInput{}
-	if params.Page != nil {
-		in.Page = params.Page
-	}
-	if params.PerPage != nil {
-		in.PerPage = params.PerPage
-	}
+	in.Page = &page
+	in.PerPage = &perPage
 	if params.Search != nil {
 		s := string(*params.Search)
 		in.Search = &s
@@ -277,13 +271,10 @@ func (h *ServerHandler) PostApiV1InventoryProductsProductIdRestore(c echo.Contex
 // GetApiV1InventoryWarehouses handles GET /api/v1/inventory/warehouses.
 func (h *ServerHandler) GetApiV1InventoryWarehouses(c echo.Context, params stub.GetApiV1InventoryWarehousesParams) error {
 	ctx := c.Request().Context()
+	page, perPage := resolvePagePerPage(c, params.Page, params.PerPage)
 	in := warehouseuc.ListWarehousesInput{}
-	if params.Page != nil {
-		in.Page = params.Page
-	}
-	if params.PerPage != nil {
-		in.PerPage = params.PerPage
-	}
+	in.Page = &page
+	in.PerPage = &perPage
 	if params.Search != nil {
 		s := string(*params.Search)
 		in.Search = &s

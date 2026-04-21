@@ -31,6 +31,8 @@ func RegisterRoutes(params HandlerParams) {
 	handler := api.NewServerHandler(params.Svc)
 	stub.RegisterHandlers(params.Echo, handler)
 	params.Echo.GET("/api/v1/inventory/sse/stock", api.SSEStock(params.Rdb, params.Jwt))
+	params.Echo.GET("/api/v1/inventory/sse/activity", api.SSEActivity(params.Svc, params.Jwt))
+	params.Echo.GET("/api/v1/inventory/dashboard/storage-utilization", handler.GetDashboardStorageUtilization)
 
 	params.Log.Info("inventory routes registered")
 }

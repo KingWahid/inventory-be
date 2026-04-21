@@ -14,14 +14,7 @@ import (
 
 func (h *ServerHandler) GetApiV1InventoryAuditLogs(c echo.Context, params stub.GetApiV1InventoryAuditLogsParams) error {
 	ctx := c.Request().Context()
-	page := 1
-	perPage := 20
-	if params.Page != nil {
-		page = int(*params.Page)
-	}
-	if params.PerPage != nil {
-		perPage = int(*params.PerPage)
-	}
+	page, perPage := resolvePagePerPage(c, params.Page, params.PerPage)
 
 	in := audituc.ListAuditLogsInput{
 		Page:        &page,
@@ -63,14 +56,7 @@ func (h *ServerHandler) GetApiV1InventoryAuditLogs(c echo.Context, params stub.G
 
 func (h *ServerHandler) GetApiV1InventoryAuditLogsAuditEntityAuditEntityId(c echo.Context, auditEntity string, auditEntityId openapi_types.UUID, params stub.GetApiV1InventoryAuditLogsAuditEntityAuditEntityIdParams) error {
 	ctx := c.Request().Context()
-	page := 1
-	perPage := 20
-	if params.Page != nil {
-		page = int(*params.Page)
-	}
-	if params.PerPage != nil {
-		perPage = int(*params.PerPage)
-	}
+	page, perPage := resolvePagePerPage(c, params.Page, params.PerPage)
 	entity := auditEntity
 	eid := uuid.UUID(auditEntityId).String()
 

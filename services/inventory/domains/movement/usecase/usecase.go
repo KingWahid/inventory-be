@@ -319,7 +319,7 @@ func (u *usecase) ListMovements(ctx context.Context, in ListMovementsInput) (Lis
 		return ListMovementsOutput{}, err
 	}
 	page := 1
-	per := 20
+	per := 10
 	if in.Page != nil {
 		page = *in.Page
 	}
@@ -433,6 +433,7 @@ func (u *usecase) ConfirmMovement(ctx context.Context, movementID string) (movre
 	}
 	_ = u.cache.Delete(ctx, cachepkg.KeyDashboardSummary(tid))
 	_ = u.cache.DeletePattern(ctx, cachepkg.PatternDashboardMovementsChart(tid))
+	_ = u.cache.DeletePattern(ctx, cachepkg.PatternProducts(tid))
 	if len(txChanges) > 0 {
 		_ = u.stockPub.PublishStockChanged(ctx, tid, mid, stockChangesToPub(txChanges))
 	}

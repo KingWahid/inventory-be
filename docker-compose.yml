@@ -75,6 +75,8 @@ services:
       APP_PORT: "8081"
       DB_DSN: host=postgres user=inventory password=inventory_password dbname=inventory sslmode=disable
       REDIS_ADDR: redis:6379
+      EVENTBUS_HMAC_SECRET: dev-secret-change-in-prod
+      NOTIF_STREAM_CONSUMER_ENABLED: "true"
     expose:
       - "8081"
     ports:
@@ -137,6 +139,7 @@ services:
     environment:
       DB_DSN: host=postgres user=inventory password=inventory_password dbname=inventory sslmode=disable
       REDIS_ADDR: redis:6379
+      EVENTBUS_HMAC_SECRET: dev-secret-change-in-prod
     depends_on:
       postgres:
         condition: service_healthy

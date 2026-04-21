@@ -119,3 +119,28 @@ func TestAuditEntryToStub_mapsJSON(t *testing.T) {
 		t.Fatal("after_data mismatch")
 	}
 }
+
+func TestAuditEntryToStub_injectsUserNameToAfterData(t *testing.T) {
+	t.Parallel()
+	name := "Jane Owner"
+	e := auditrepo.Entry{
+		ID:       uuid.New().String(),
+		TenantID: uuid.New().String(),
+		Action:   "x",
+		Entity:   "category",
+		EntityID: uuid.New().String(),
+		UserName: &name,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	row, err := auditEntryToStub(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.AfterData == nil {
+		t.Fatal("after_data should not be nil")
+	}
+	if got := (*row.AfterData)["user_name"]; got != name {
+		t.Fatalf("user_name mismatch: got=%v want=%s", got, name)
+	}
+}

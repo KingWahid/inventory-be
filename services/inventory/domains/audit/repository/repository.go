@@ -48,6 +48,7 @@ type Entry struct {
 	ID         string
 	TenantID   string
 	UserID     *string
+	UserName   *string
 	Action     string
 	Entity     string
 	EntityID   string
@@ -63,6 +64,7 @@ type auditLogRow struct {
 	ID         string    `gorm:"column:id;type:uuid;primaryKey"`
 	TenantID   string    `gorm:"column:tenant_id;type:uuid"`
 	UserID     *string   `gorm:"column:user_id;type:uuid"`
+	UserName   *string   `gorm:"column:user_name"`
 	Action     string    `gorm:"column:action"`
 	Entity     string    `gorm:"column:entity"`
 	EntityID   string    `gorm:"column:entity_id;type:uuid"`
@@ -114,29 +116,44 @@ func (r *repository) Insert(ctx context.Context, in InsertInput) error {
 func (r *repository) List(ctx context.Context, tenantID string, f ListFilter) ([]Entry, int64, error) {
 	db := transaction.GetDB(ctx, r.db).WithContext(ctx)
 	tid := strings.TrimSpace(tenantID)
-	q := db.Model(&auditLogRow{}).Where("tenant_id = ?", tid)
+	countQ := db.Table("audit_logs AS al").Where("al.tenant_id = ?", tid)
+	listQ := db.Table("audit_logs AS al").
+		Select("al.*, u.full_name AS user_name").
+		Joins("LEFT JOIN users u ON u.id = al.user_id").
+		Where("al.tenant_id = ?", tid)
 
 	if f.Entity != nil && strings.TrimSpace(*f.Entity) != "" {
-		q = q.Where("entity = ?", strings.TrimSpace(*f.Entity))
+		val := strings.TrimSpace(*f.Entity)
+		countQ = countQ.Where("al.entity = ?", val)
+		listQ = listQ.Where("al.entity = ?", val)
 	}
 	if f.EntityID != nil && strings.TrimSpace(*f.EntityID) != "" {
-		q = q.Where("entity_id = ?", strings.TrimSpace(*f.EntityID))
+		val := strings.TrimSpace(*f.EntityID)
+		countQ = countQ.Where("al.entity_id = ?", val)
+		listQ = listQ.Where("al.entity_id = ?", val)
 	}
 	if f.Action != nil && strings.TrimSpace(*f.Action) != "" {
-		q = q.Where("action = ?", strings.TrimSpace(*f.Action))
+		val := strings.TrimSpace(*f.Action)
+		like := "%" + val + "%"
+		countQ = countQ.Where("al.action ILIKE ?", like)
+		listQ = listQ.Where("al.action ILIKE ?", like)
 	}
 	if f.UserID != nil && strings.TrimSpace(*f.UserID) != "" {
-		q = q.Where("user_id = ?", strings.TrimSpace(*f.UserID))
+		val := strings.TrimSpace(*f.UserID)
+		countQ = countQ.Where("al.user_id = ?", val)
+		listQ = listQ.Where("al.user_id = ?", val)
 	}
 	if f.CreatedFrom != nil {
-		q = q.Where("created_at >= ?", *f.CreatedFrom)
+		countQ = countQ.Where("al.created_at >= ?", *f.CreatedFrom)
+		listQ = listQ.Where("al.created_at >= ?", *f.CreatedFrom)
 	}
 	if f.CreatedTo != nil {
-		q = q.Where("created_at <= ?", *f.CreatedTo)
+		countQ = countQ.Where("al.created_at <= ?", *f.CreatedTo)
+		listQ = listQ.Where("al.created_at <= ?", *f.CreatedTo)
 	}
 
 	var total int64
-	if err := q.Count(&total).Error; err != nil {
+	if err := countQ.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -150,7 +167,7 @@ func (r *repository) List(ctx context.Context, tenantID string, f ListFilter) ([
 	}
 
 	var rows []auditLogRow
-	err := q.Order("created_at DESC, id ASC").
+	err := listQ.Order("al.created_at DESC, al.id ASC").
 		Offset((page - 1) * per).
 		Limit(per).
 		Find(&rows).Error
@@ -169,6 +186,7 @@ func rowToEntry(r auditLogRow) Entry {
 		ID:         r.ID,
 		TenantID:   r.TenantID,
 		UserID:     r.UserID,
+		UserName:   r.UserName,
 		Action:     r.Action,
 		Entity:     r.Entity,
 		EntityID:   r.EntityID,

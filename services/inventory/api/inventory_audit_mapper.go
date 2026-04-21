@@ -37,6 +37,12 @@ func auditEntryToStub(e auditrepo.Entry) (stub.AuditLog, error) {
 
 	before := jsonRawToIfaceMapPtr(e.BeforeData)
 	after := jsonRawToIfaceMapPtr(e.AfterData)
+	if e.UserName != nil && *e.UserName != "" {
+		if after == nil {
+			after = &map[string]interface{}{}
+		}
+		(*after)["user_name"] = *e.UserName
+	}
 
 	out := stub.AuditLog{
 		Action:     e.Action,

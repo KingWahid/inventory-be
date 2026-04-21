@@ -33,6 +33,11 @@ func productRepoToStub(p catalogrepo.Product) (stub.Product, error) {
 	u := p.Unit
 	rl := p.ReorderLevel
 	meta := metadataToStubMap(p.Metadata)
+	if meta == nil {
+		m := map[string]interface{}{}
+		meta = &m
+	}
+	(*meta)["current_stock"] = p.CurrentStock
 	return stub.Product{
 		Id:           openapi_types.UUID(id),
 		TenantId:     openapi_types.UUID(tid),

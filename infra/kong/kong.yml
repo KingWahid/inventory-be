@@ -90,6 +90,7 @@ plugins:
         - Accept
         - Authorization
         - Content-Type
+        - Idempotency-Key
         - X-Request-Id
       exposed_headers:
         - X-Request-Id

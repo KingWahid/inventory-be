@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -22,6 +23,7 @@ var InventoryPublicPaths = map[string]struct{}{
 	"/ready":                      {},
 	"/api/v1/inventory/health":    {},
 	"/api/v1/inventory/sse/stock": {}, // JWT validated in handler (Bearer or access_token query)
+	"/api/v1/inventory/sse/activity": {},
 }
 
 // NewEcho builds Echo with error handling and lifecycle; routes are registered separately (see fx.RegisterRoutes).
@@ -56,6 +58,20 @@ func NewEcho(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger, jwtSvc *commo
 }
 
 func requestLoggerMiddleware(log *zap.Logger) echo.MiddlewareFunc {
+	var probeLogOnce sync.Once
+
+	isProbe := func(method, rawPath string) bool {
+		if method != http.MethodGet {
+			return false
+		}
+		switch rawPath {
+		case "/health", "/ready", "/api/v1/inventory/health":
+			return true
+		default:
+			return false
+		}
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			start := time.Now()
@@ -76,6 +92,12 @@ func requestLoggerMiddleware(log *zap.Logger) echo.MiddlewareFunc {
 				fields = append(fields, zap.Error(err))
 				log.Warn("request completed with error", fields...)
 				return err
+			}
+			if isProbe(req.Method, req.URL.Path) {
+				probeLogOnce.Do(func() {
+					log.Debug("request completed", fields...)
+				})
+				return nil
 			}
 			log.Info("request completed", fields...)
 			return nil

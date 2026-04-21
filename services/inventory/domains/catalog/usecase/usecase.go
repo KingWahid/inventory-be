@@ -134,7 +134,7 @@ func (u *usecase) ListCategories(ctx context.Context, in ListCategoriesInput) (L
 	}
 
 	page := 1
-	perPage := 20
+	perPage := 10
 	if in.Page != nil {
 		page = *in.Page
 	}

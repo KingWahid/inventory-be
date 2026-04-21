@@ -32,6 +32,10 @@ func (s *spyDashRepo) GetMovementChart(context.Context, string, dashrepo.Movemen
 	return s.chartPts, s.chartErr
 }
 
+func (s *spyDashRepo) GetStorageUtilization(context.Context, string, int) ([]dashrepo.StorageUtilizationRow, error) {
+	return nil, nil
+}
+
 func TestGetDashboardSummary_secondCallUsesCache(t *testing.T) {
 	t.Parallel()
 	mr, err := miniredis.Run()

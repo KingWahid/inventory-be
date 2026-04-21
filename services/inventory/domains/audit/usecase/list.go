@@ -36,7 +36,7 @@ func (u *usecase) ListAuditLogs(ctx context.Context, in ListAuditLogsInput) (Lis
 		return ListAuditLogsOutput{}, err
 	}
 	page := 1
-	per := 20
+	per := 10
 	if in.Page != nil {
 		page = *in.Page
 	}

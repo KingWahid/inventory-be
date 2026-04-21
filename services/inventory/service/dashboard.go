@@ -15,3 +15,8 @@ func (s *InventoryService) GetDashboardSummary(ctx context.Context) (dashboarduc
 func (s *InventoryService) GetDashboardMovementsChart(ctx context.Context, period string) (dashboarduc.MovementChart, error) {
 	return s.dashboard.GetDashboardMovementsChart(ctx, period)
 }
+
+// GetDashboardStorageUtilization returns on-hand based warehouse utilization snapshot.
+func (s *InventoryService) GetDashboardStorageUtilization(ctx context.Context, limit int) ([]dashboarduc.StorageUtilizationRow, error) {
+	return s.dashboard.GetStorageUtilization(ctx, limit)
+}

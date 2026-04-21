@@ -85,7 +85,7 @@ func (u *usecase) ListWarehouses(ctx context.Context, in ListWarehousesInput) (L
 	}
 
 	page := 1
-	perPage := 20
+	perPage := 10
 	if in.Page != nil {
 		page = *in.Page
 	}

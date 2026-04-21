@@ -3,9 +3,7 @@
 > **Version:** 1.0.0
 > **Last Updated:** 2026-04-18
 > **Status:** Draft
-> **Bahasa:** Dokumen ini dalam Bahasa Indonesia — versi Inggris: [ARCHITECTURE.en.md](ARCHITECTURE.en.md)
-
-**Konvensi repositori (wajib untuk developer backend):** ikuti [`CLAUDE.md`](CLAUDE.md) — entry point yang mengarahkan ke [`docs/conventions/codebase-conventions.md`](docs/conventions/codebase-conventions.md); indeks panduan per-topik ada di [`docs/README.md`](docs/README.md). Alur verifikasi dan quality gates dirangkum di [§17.1](#171-quality-gates-dan-alur-pengembangan). Panduan workflow agent ada di [`.claude/CLAUDE.md`](.claude/CLAUDE.md) (opsional).
+> **Language:** English — Indonesian version: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
@@ -14,7 +12,7 @@
 1. [Overview](#1-overview)
 2. [Tech Stack](#2-tech-stack)
 3. [High-Level Architecture](#3-high-level-architecture)
-4. [Project Structure](#4-project-structure) — [§4.1 Pemetaan docs ↔ repo](#41-pemetaan-pola-dokumentasi--repo-ini)
+4. [Project Structure](#4-project-structure) — [§4.1 Docs ↔ repo mapping](#41-documentation-pattern--repository-mapping)
 5. [Layered Architecture](#5-layered-architecture)
 6. [Multi-Tenancy Strategy](#6-multi-tenancy-strategy)
 7. [Authentication & Authorization](#7-authentication--authorization)
@@ -27,24 +25,24 @@
 14. [Logging & Audit Trail](#14-logging--audit-trail)
 15. [Error Handling](#15-error-handling)
 16. [Deployment Architecture](#16-deployment-architecture)
-17. [Implementation Roadmap](#17-implementation-roadmap) — [§17.1 Quality gates](#171-quality-gates-dan-alur-pengembangan)
+17. [Implementation Roadmap](#17-implementation-roadmap) — [§17.1 Quality gates](#171-quality-gates-and-development-workflow)
 
 ---
 
 ## 1. Overview
 
-**Pemetaan repositori:** kode Go monorepo — **`infra/`** (konfigurasi & migrasi), **`pkg/`** (pustaka bersama), **`services/`** (microservice), **`workers/`** (background); **seluruh UI (Next.js)** di **`frontend/`** — lihat [§4](#4-project-structure).
+**Repository layout:** Go monorepo — **`infra/`** (config & migrations), **`pkg/`** (shared libraries), **`services/`** (microservices), **`workers/`** (background); **all UI (Next.js)** under **`frontend/`** — see [§4](#4-project-structure).
 
-**Siap microservice:** target produksi adalah **Kong** + kontainer terpisah (`inventory-api`, `notification-service`, worker) — lihat [§3.1](#31-topologi-microservice-ready-kong--docker).
+**Microservice-ready:** production target is **Kong** plus split containers (`inventory-api`, `notification-service`, workers) — see [§3.1](#31-microservice-ready-topology-kong--docker).
 
-Sistem inventory management full-stack multi-tenant yang menangani seluruh siklus hidup barang: master data (produk, kategori, gudang), pergerakan stok (inbound, outbound, transfer antar gudang), dashboard realtime, notifikasi otomatis, dan audit trail lengkap.
+A full-stack, multi-tenant inventory management system covering the full item lifecycle: master data (products, categories, warehouses), stock movements (inbound, outbound, inter-warehouse transfers), a realtime dashboard, automated notifications, and a complete audit trail.
 
 ### Design Principles
 
-- **Stock Consistency First** — Setiap perubahan stok HARUS melalui movement (tidak ada "update stok bebas"). Saldo stok dan movement di-commit dalam satu transaksi DB.
-- **Modular Monolith, Event-Ready** — Satu layanan **`services/inventory`** (proses **inventory-api**) di fase awal dengan modul jelas (catalog, warehouse, movement, audit). Layanan lain (`notification`, `authentication`, …) sudah punya folder sendiri dan bisa diaktifkan bertahap lewat event boundary yang sama.
-- **Outbox Pattern** — Event dipublish ke Redis Streams setelah DB commit (bukan sebelum), menghindari inkonsistensi antara state DB dan event bus.
-- **Tenant Isolation** — Semua data domain di-scope per `tenant_id`; tidak ada akses lintas tenant.
+- **Stock Consistency First** — Every stock change MUST go through a movement (no ad-hoc stock updates). Stock balance and movement rows are committed in a single DB transaction.
+- **Modular Monolith, Event-Ready** — A single **`services/inventory`** service (**inventory-api**) in the first phase with clear modules (catalog, warehouse, movement, audit). Other services (`notification`, `authentication`, …) have their own folders and can be rolled out gradually using the same event boundaries.
+- **Outbox Pattern** — Events are published to Redis Streams after the DB commit (not before), avoiding inconsistency between DB state and the event bus.
+- **Tenant Isolation** — All domain data is scoped by `tenant_id`; there is no cross-tenant access.
 
 ---
 
@@ -151,27 +149,27 @@ Async (background):
   Workers → XREADGROUP from Redis Stream → process (alert/report/sync)
   
 Realtime:
-  Usecase → PUBLISH ke channel Redis Pub/Sub
-  Echo SSE handler → SUBSCRIBE → push ke klien terhubung
+  Usecase → PUBLISH to Redis Pub/Sub channel
+  Echo SSE handler → SUBSCRIBE → push to connected clients
 ```
 
-### 3.1 Topologi microservice-ready (Kong & Docker)
+### 3.1 Microservice-ready topology (Kong & Docker)
 
-Desain ini **siap dipecah menjadi banyak kontainer** tanpa mengubah aturan bisnis inti: **stok dan movement** tetap di satu layanan **`inventory-api`** (transaksi DB tunggal). Layanan lain **hanya** membaca event / menjalankan efek samping (notifikasi, laporan, sync).
+This design **splits into multiple containers** without changing core business rules: **stock and movement** stay in a single **`inventory-api`** service (single DB transaction). Other services **only** consume events or run side effects (notifications, reports, sync).
 
-**Prinsip**
+**Principles**
 
-| Prinsip | Arti |
-|---------|------|
-| **Gateway tunggal** | Klien (browser/mobile) hanya berbicara ke **Kong** (TLS, rate limit, routing); tidak memanggil worker langsung. |
-| **Batas layanan** | `inventory-api` = domain stok + auth + audit HTTP; **notification-service** = kirim email/push/webhook dari event; **worker-*** = outbox relay + konsumsi stream (alert, laporan, sync). |
-| **Komunikasi antar layanan** | Utama lewat **Redis Streams** (dan Pub/Sub untuk realtime UI); hindari chain HTTP sinkron antar service untuk operasi stok. |
-| **Skala** | Replika horizontal: `inventory-api` N instance (stateless + JWT); worker per **consumer group**; notification-service bisa di-scale terpisah. |
-| **Evolution** | Monorepo di **`services/*`** bisa **satu Dockerfile per layanan** atau image bersama dengan `CMD` berbeda. |
+| Principle | Meaning |
+|-----------|---------|
+| **Single gateway** | Clients (browser/mobile) talk only to **Kong** (TLS, rate limit, routing); workers are not called directly. |
+| **Service boundaries** | `inventory-api` = stock domain + auth + HTTP audit; **notification-service** = email/push/webhook from events; **worker-*** = outbox relay + stream consumers (alerts, reports, sync). |
+| **Inter-service communication** | Primarily **Redis Streams** (and Pub/Sub for realtime UI); avoid synchronous HTTP chains for stock operations. |
+| **Scaling** | Horizontal replicas: stateless `inventory-api` + JWT; workers per **consumer group**; notification-service can scale independently. |
+| **Evolution** | The **`services/*`** tree can use **one Dockerfile per service** or a shared image with different `CMD`. |
 
 ```mermaid
 flowchart TB
-  subgraph clients [Klien]
+  subgraph clients [Clients]
     FE[frontend Next.js]
   end
 
@@ -179,11 +177,11 @@ flowchart TB
     Kong[Kong API Gateway]
   end
 
-  subgraph core [Domain stok - satu bounded context]
+  subgraph core [Stock domain - single bounded context]
     InvAPI[inventory-api]
   end
 
-  subgraph sidecar [Layanan samping - event-driven]
+  subgraph sidecar [Side services - event-driven]
     Notif[notification-service]
     Relay[worker-outbox-relay]
     WAlert[worker-alerts]
@@ -193,7 +191,7 @@ flowchart TB
 
   subgraph data [Data]
     PG[(PostgreSQL)]
-    Redis[(Redis Streams plus PubSub)]
+    Redis[(Redis Streams + Pub/Sub)]
   end
 
   FE --> Kong
@@ -212,116 +210,105 @@ flowchart TB
   Notif --> ExtN[Email Push Webhook]
 ```
 
-**Rute Kong (contoh declarative)**
+**Example Kong routes (declarative)**
 
-| Path prefix | Upstream | Keterangan |
-|-------------|------------|------------|
-| `/api/v1/inventory` | `inventory-api:8080` | CRUD produk, movement, stok, audit, SSE stok |
-| `/api/v1/notifications` | `notification-service:8081` | Opsional: preferensi channel, webhook test, health — **bukan** sumber kebenaran stok |
-| `/` | `frontend:3000` | Hanya jika Kong juga mem-proxy UI; produksi umumnya CDN/domain terpisah |
+| Path prefix | Upstream | Notes |
+|-------------|----------|--------|
+| `/api/v1/inventory` | `inventory-api:8080` | Products, movements, stock, audit, stock SSE |
+| `/api/v1/notifications` | `notification-service:8081` | Optional: channel prefs, webhook test, health — **not** the stock source of truth |
+| `/` | `frontend:3000` | Only if Kong also proxies the UI; production often uses a separate CDN/domain |
 
-Plugin Kong yang umum: **JWT** (atau **OIDC**), **rate-limiting**, **CORS**, **request-id**, **prometheus** (metrics).
+Common Kong plugins: **JWT** (or **OIDC**), **rate-limiting**, **CORS**, **request-id**, **prometheus**.
 
 ---
 
 ## 4. Project Structure
 
-Monorepo: **infrastruktur & migrasi** di `infra/`, **pustaka bersama** di `pkg/`, **layanan HTTP** di `services/`, **proses latar** di `workers/`, **UI** di `frontend/`. Pola mengikuti contoh “infra + pkg + services + workers” agar mudah dipecah per tim atau CI. Beberapa image dari satu `go.mod` root (atau `go.work`) — lihat [§3.1](#31-topologi-microservice-ready-kong--docker) dan [§16](#16-deployment-architecture).
+Monorepo: **infrastructure & migrations** in `infra/`, **shared libraries** in `pkg/`, **HTTP services** in `services/`, **background processes** in `workers/`, **UI** in `frontend/`. Matches the common **infra + pkg + services + workers** layout for team/CI splits. Multiple images from one root `go.mod` (or `go.work`) — see [§3.1](#31-microservice-ready-topology-kong--docker) and [§16](#16-deployment-architecture).
 
-**Konvensi path di repositori ini:** sumber Go aktif dan compose backend berada di **`backend/`** (modul **`github.com/KingWahid/inventory/backend`** — `backend/go.mod`). Pohon di bawah memakai path relatif dari **`backend/`**; `frontend/` dapat berada di akar monorepo (`../frontend/` dari sudut pandang `backend/`).
+**Path convention in this repo:** Go sources and backend compose live under **`backend/`** (module **`github.com/KingWahid/inventory/backend`** — `backend/go.mod`). Trees below use paths relative to **`backend/`**; `frontend/` may live at the monorepo root (`../frontend/` from `backend/`).
 
-### Pembagian tanggung jawab
+### Responsibility split
 
-| Folder | Isi | Bukan tanggung jawabnya |
-|--------|-----|-------------------------|
-| **`infra/`** | Compose, migrasi SQL, seed, Kong declarative ([`infra/kong/kong.yml`](infra/kong/kong.yml)), Postgres / Redis | Logika bisnis domain |
-| **`pkg/`** | `common` (JWT, validation, errorcodes, logger), `database/base`, `database/transaction`, `eventbus`, dll. | Aturan domain spesifik satu layanan HTTP |
-| **`services/*`** | Satu folder per layanan: Echo, OpenAPI, stub codegen, fx wiring; domain inventory di **`domains/<nama>/handler|usecase|repository`** | Halaman React |
-| **`workers/`** | Outbox relay, konsumen stream, cron (sesuai implementasi) | REST publik langsung ke browser |
-| **`frontend/`** | Next.js, `fetch`/SSE | Stok & DB |
+| Folder | Owns | Does not own |
+|--------|------|----------------|
+| **`infra/`** | Compose, SQL migrations, seeds, Kong declarative ([`infra/kong/kong.yml`](infra/kong/kong.yml)), Postgres / Redis | Domain business logic |
+| **`pkg/`** | `common` (JWT, validation, errorcodes, logger), `database/base`, `database/transaction`, `eventbus`, etc. | HTTP-specific rules for one service |
+| **`services/*`** | One folder per service: Echo, OpenAPI, stub codegen, fx wiring; inventory domains under **`domains/<name>/handler|usecase|repository`** | React pages |
+| **`workers/`** | Outbox relay, stream consumers, cron (as implemented) | Browser-facing REST |
+| **`frontend/`** | Next.js, `fetch`/SSE | Stock rules & DB |
 
-Komunikasi klien ke **Kong**; antar layanan lewat **Redis Streams** / HTTP internal. Frontend: `NEXT_PUBLIC_API_URL` ke gateway.
+Clients talk to **Kong**; services communicate via **Redis Streams** / internal HTTP. Frontend uses `NEXT_PUBLIC_API_URL` to the gateway.
 
-### 4.1 Pemetaan pola dokumentasi ↔ repo ini
-
-Panduan di [`docs/`](docs/) banyak ditulis untuk pola **Industrix** (`pkg/services/...`, pemisahan converter OpenAPI, **`organization_id`**). Repo **inventory** ini menyederhanakan dan menyelaraskan seperti berikut — prinsip dari [`docs/conventions/codebase-conventions.md`](docs/conventions/codebase-conventions.md) (error, logging, konteks, GORM) tetap berlaku; yang berbeda adalah **letak file**.
-
-| Topik di dokumentasi (`docs/`) | Letak / perilaku di repo inventory |
-|--------------------------------|-------------------------------------|
-| Lapisan **service** di `pkg/services/<bounded>/` | **`services/inventory/domains/<domain>/usecase`** (+ layanan tambahan seperti `services/authentication/service`) |
-| **`organization_id`** di contoh query / JWT | **`tenant_id`** di skema DB dan klaim JWT ([`pkg/common/jwt/claims.go`](pkg/common/jwt/claims.go)) — konsisten dengan §6–§8 dokumen ini |
-| Converter **stub OpenAPI ↔ domain** di `services/*/api/converters.go` | Setiap layanan punya **`api/`** (Echo, route), **`openapi/`**, **`stub/`** (kode generate); inventory menambah **`domains/*/handler`** yang memanggil usecase — ikuti [`docs/service/how-to-structure-openapi.md`](docs/service/how-to-structure-openapi.md) dan sesuaikan path |
-| Repository di `pkg/database/repositories/<aggregate>/` | Saat ini banyak akses data di **`services/inventory/domains/*/repository`**; **`pkg/database/base`** tetap dipakai untuk pola cache/soft-delete bersama; konsolidasi ke `pkg/database/repositories` adalah opsi evolusi |
-| File modul fx bernama **`MODULE.go`** (huruf besar) | Modul domain memakai nama file **`module.go`** (huruf kecil) — konvensi berbeda secara kosmetik; isinya tetap `fx.Module` / `fx.Options` |
+### 4.1 Documentation pattern ↔ repository mapping
 
 ```
 backend/                                 # go.mod: github.com/KingWahid/inventory/backend
 ├── infra/
 │   ├── database/
-│   │   ├── migrations/                  # SQL migrations
-│   │   └── cmd/seed/                    # Seeding & mock dev
+│   │   ├── migrations/
+│   │   └── cmd/seed/
 │   ├── kong/
-│   │   └── kong.yml                     # Konfigurasi declarative Kong (bukan kong.template.yml)
+│   │   └── kong.yml                     # Declarative Kong (not kong.template.yml)
 │   ├── postgres/
 │   └── redis/
 ├── pkg/
-│   ├── common/                          # JWT, validation, errorcodes, logger, pagination, …
+│   ├── common/
 │   ├── database/
-│   │   ├── base/                        # Base repository, cache helpers
-│   │   ├── transaction/               # Propagasi tx lewat context
-│   │   └── schemas/                   # Skema GORM bersama jika ada
-│   └── eventbus/                      # Redis Streams — publish/consume
+│   │   ├── base/
+│   │   ├── transaction/
+│   │   └── schemas/
+│   └── eventbus/
 ├── services/
 │   ├── authentication/
 │   │   ├── cmd/server/main.go
-│   │   ├── api/                         # Echo, auth handlers, middleware JWT
+│   │   ├── api/
 │   │   ├── config/
-│   │   ├── fx/                          # Agregasi fx + registrasi route
+│   │   ├── fx/
 │   │   ├── openapi/
-│   │   ├── repository/                  # Akses DB auth (user, …)
+│   │   ├── repository/
 │   │   ├── service/
 │   │   └── stub/
 │   ├── inventory/
-│   │   ├── cmd/server/main.go           # inventory-api — fx.Run
-│   │   ├── api/                         # Echo, health, wiring route terpusat
+│   │   ├── cmd/server/main.go
+│   │   ├── api/
 │   │   ├── config/
-│   │   ├── fx/                          # `module.go` (compose modul) + `handler.go` (register handler)
+│   │   ├── fx/
 │   │   ├── service/
 │   │   ├── openapi/
 │   │   ├── stub/
-│   │   └── domains/                     # Modul domain — satu folder per bounded context
+│   │   └── domains/
 │   │       ├── catalog/
 │   │       ├── warehouse/
 │   │       ├── movement/
 │   │       ├── audit/
 │   │       └── auth/
-│   │           ├── module.go            # fx: Provide handler, usecase, repository
+│   │           ├── module.go
 │   │           ├── handler/
 │   │           ├── usecase/
 │   │           └── repository/
 │   │   ├── docker/Dockerfile
 │   │   └── air.toml
-│   └── notification/                  # (jika dipakai) pola sama: cmd, api, fx, openapi
-├── workers/                             # Background / konsumen (struktur mengikuti implementasi)
+│   └── notification/
+├── workers/
 ├── Makefile
-├── CLAUDE.md
 ├── ARCHITECTURE.md
-└── docs/                                # Panduan konvensi & how-to
+└── docs/
 ```
 
-**Catatan**
+**Notes**
 
-- **Domain stok & konsistensi transaksi** tetap di **`services/inventory`** (movement + saldo + outbox dalam satu transaksi DB).
-- **Gateway:** sumber kebenaran rute untuk deploy adalah **`infra/kong/kong.yml`** — selaraskan dengan §9 dan compose di §16.
-- **Migrasi** di **`infra/database/migrations`**; jalankan melalui target Makefile / CI proyek.
+- **Stock domain & transactional consistency** remain in **`services/inventory`** (movement + balance + outbox in one DB transaction).
+- **Gateway:** route source of truth for deploy is **`infra/kong/kong.yml`** — keep in sync with §9 and compose in §16.
+- **Migrations** under **`infra/database/migrations`**; run via Makefile / CI targets.
 
-Struktur ini mendukung **CI per layanan** (`services/inventory`, `services/notification`, …) dan **ekstraksi repo** nanti tanpa mengubah kontrak API publik.
+This supports **per-service CI** and **future repo extraction** without changing public API contracts.
 
 ---
 
 ## 5. Layered Architecture
 
-Setiap domain module mengikuti tiga layer yang strict:
+Each domain module follows three strict layers:
 
 ```mermaid
 flowchart TB
@@ -361,17 +348,10 @@ flowchart TB
 | **Usecase** | Repository interfaces, domain entities, cache/stream interfaces | Echo, HTTP concepts | Business rules, transaction orchestration, event publishing |
 | **Repository** | GORM, domain entities | Usecase, Handler | Data access, query building, implements interfaces |
 
-### Aturan dependensi dan tautan dokumentasi
-
-- **Satu tanggung jawab per lapisan** — Handler tidak mengimpor `gorm.DB` atau Echo di usecase; usecase tidak mengimpor `echo.Context`. Selaras dengan pemisahan concerns di [`.claude/rules/general/principles.md`](.claude/rules/general/principles.md).
-- **HTTP & kontrak API** — pola bind, status HTTP, dan batas handler: [`docs/service/how-to-write-handlers.md`](docs/service/how-to-write-handlers.md) (sesuaikan path ke `services/<layanan>/api` dan `domains/*/handler`).
-- **Transaksi** — orkestrasi komit/rollback dari usecase: [`docs/service/how-to-use-transactions.md`](docs/service/how-to-use-transactions.md); transaksi lewat context sesuai bagian *Context Management* di [`docs/conventions/codebase-conventions.md`](docs/conventions/codebase-conventions.md).
-- **Repository** — pola interface + implementasi: [`docs/repository/how-to-create-a-repository.md`](docs/repository/how-to-create-a-repository.md); implementasi saat ini di **`services/inventory/domains/*/repository`** dapat direfaktor ke `pkg/database/repositories` bila tim menyepakati konsolidasi.
-
 ### Dependency Injection with fx
 
 ```go
-// services/inventory/domains/catalog/module.go — modul domain (catalog)
+// services/inventory/domains/catalog/module.go — catalog domain module
 var Module = fx.Module("catalog",
     fx.Provide(
         repository.New,
@@ -380,11 +360,11 @@ var Module = fx.Module("catalog",
     ),
 )
 
-// services/inventory/cmd/server/main.go — menggabungkan invfx.Module (config, postgres, redis, api, domain modules)
+// services/inventory/cmd/server/main.go — combines invfx.Module (config, postgres, redis, api, domain modules)
 func main() {
     uberfx.New(
         uberfx.WithLogger(/* fxevent.ZapLogger */),
-        invfx.Module, // services/inventory/fx — berisi auth, audit, catalog, movement, warehouse, service, api
+        invfx.Module, // services/inventory/fx — auth, audit, catalog, movement, warehouse, service, api
     ).Run()
 }
 ```
@@ -395,37 +375,40 @@ func main() {
 
 ### Approach: Column-Level Isolation (`tenant_id`)
 
-Semua tabel domain memiliki kolom `tenant_id NOT NULL`. Satu database, satu schema, satu pool koneksi.
+All domain tables have a `tenant_id NOT NULL` column. One database, one schema, one connection pool.
 
 ```mermaid
 flowchart LR
-  JWT["JWT: tenant_id in claims"] --> Middleware["RequireBearerAccessJWT"]
-  Middleware --> ReqCtx["request.Context + Claims"]
-  ReqCtx --> TenantID["jwt.TenantIDFromContext"]
-  TenantID --> Usecase
-  Usecase --> Repo["base.TenantDB or WHERE tenant_id"]
+  JWT["JWT: { tenant_id: uuid }"] --> Middleware[Tenant Middleware]
+  Middleware --> Context["ctx.Set('tenant_id', uuid)"]
+  Context --> Usecase
+  Usecase --> Repo["Repository: WHERE tenant_id = ?"]
   Repo --> DB[(PostgreSQL)]
 ```
 
 ### Implementation
 
-Sumber kebenaran tenant untuk usecase dan repository adalah **`context.Context`** yang dibawa request setelah JWT access token divalidasi (`pkg/common/jwt.RequireBearerAccessJWT` memanggil `ContextWithClaims`). Jangan mengandalkan `echo.Context` saja — gunakan `c.Request().Context()` atau helper:
-
 ```go
-tid, err := jwt.TenantIDFromContext(ctx)
-if err != nil {
-    return err // errorcodes.ErrTenantContextMissing → 401 via ToHTTP
+// services/inventory/api/middleware/tenant.go — extract tenant_id from JWT claims
+func TenantMiddleware() echo.MiddlewareFunc {
+    return func(next echo.HandlerFunc) echo.HandlerFunc {
+        return func(c echo.Context) error {
+            claims := c.Get("jwt_claims").(*JWTClaims)
+            c.Set("tenant_id", claims.TenantID)
+            return next(c)
+        }
+    }
 }
 
-// GORM: scope query (hindari tenant_id dari parameter handler / body)
-db, err := base.TenantDB(ctx, r.db.WithContext(ctx))
-if err != nil {
-    return err
+// repository — every query scoped
+func (r *productRepo) FindAll(ctx context.Context, tenantID uuid.UUID) ([]domain.Product, error) {
+    var products []domain.Product
+    err := r.db.WithContext(ctx).
+        Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
+        Find(&products).Error
+    return products, err
 }
-err = db.Where("deleted_at IS NULL").Find(&products).Error
 ```
-
-Untuk RBAC: klaim JWT memuat `role` dan `permissions`; `jwt.HasPermission` / `jwt.RequirePermission` menganggap `admin`, `owner`, dan `super_admin` memiliki akses penuh dalam tenant; role lain mengikuti slice `permissions` yang diisi saat login.
 
 ### Tenant Table (global, not tenant-scoped)
 
@@ -864,7 +847,7 @@ Warehouse soft-delete:
 https://api.inventory.example.com/api/v1
 ```
 
-Kong mem-route menurut **`infra/kong/kong.yml`**: umumnya **`/api/v1/inventory`** → upstream **inventory-api** (`services/inventory`), **`/api/v1/notifications`** → **notification-service**. Rute auth (`/auth/...`) bisa dilayani **`services/inventory`** di fase awal atau **`services/authentication`** setelah dipisah — dokumentasikan di Kong agar konsisten. JWT wajib di semua rute terproteksi kecuali login/register publik.
+Kong routes follow **`infra/kong/kong.yml`**: typically **`/api/v1/inventory`** → **inventory-api** (`services/inventory`), **`/api/v1/notifications`** → **notification-service**. Auth routes (`/auth/...`) may be served by **`services/inventory`** initially or **`services/authentication`** after split — keep Kong in sync. JWT is required on protected routes except public login/register.
 
 ### Resource Endpoints
 
@@ -993,8 +976,6 @@ Headers: `Idempotency-Key: <uuid>` (required for create operations)
   }
 }
 ```
-
-**Implementasi:** respons sukses JSON harus dibungkus helper [`pkg/common/httpresponse`](pkg/common/httpresponse) (`OK`, `OKList`, `Fail` mendelegasi error ke [`WriteHTTPError`](pkg/common/errorcodes/envelope.go)). **Pengecualian:** probe kesehatan berbasis teks (`text/plain`) seperti `GET /health`, `GET /ready`, dan `GET /api/v1/.../health` tidak memakai envelope JSON §9 — tetap body plaintext sesuai OpenAPI. Streaming/SSE di luar scope envelope JSON yang sama.
 
 ---
 
@@ -1263,19 +1244,17 @@ logger.Info("movement confirmed",
 | `WAREHOUSE_HAS_STOCK` | 422 | Cannot deactivate warehouse with stock |
 | `INSUFFICIENT_STOCK` | 422 | Outbound/transfer qty exceeds available |
 | `MOVEMENT_NOT_DRAFT` | 422 | Cannot modify confirmed/cancelled movement |
-| `NOT_IMPLEMENTED` | 501 | Endpoint stub / not yet implemented |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 
 ### Domain Error Pattern (Go)
 
 ```go
-// pkg/common/errorcodes — AppError is the flat projection of the nested `error` object in §9 JSON.
+// pkg/common/errorcodes or services/inventory/domains/<domain>/errors.go
 type AppError struct {
-    Code      string         `json:"code"`
-    Message   string         `json:"message"`
-    MessageID string         `json:"message_id,omitempty"` // optional i18n key
-    Status    int            `json:"-"`
-    Details   map[string]any `json:"details,omitempty"`
+    Code    string         `json:"code"`
+    Message string         `json:"message"`
+    Status  int            `json:"-"`
+    Details map[string]any `json:"details,omitempty"`
 }
 
 var (
@@ -1288,23 +1267,11 @@ var (
 )
 ```
 
-### 15.1 HTTP JSON: envelope §9 dan `AppError`
-
-Respons error ke klien mengikuti format §9 (`success: false`, objek `error` berisi `code`, `message`, `message_id` opsional, `details` opsional, serta `meta.request_id` bila tersedia). Implementasi: [`pkg/common/errorcodes.WriteHTTPError`](pkg/common/errorcodes/envelope.go) dipanggil dari Echo `HTTPErrorHandler` pada services authentication dan inventory.
-
-Domain layer tetap memakai **`AppError`** di [`pkg/common/errorcodes`](pkg/common/errorcodes/errors.go) dengan method chaining (`WithDetails`, `WithMessageID`, `WithStatus`, `WithCode`, `Problem`). Keputusan arsitektur: [`docs/adr/001-errors.md`](docs/adr/001-errors.md) (perluasan `AppError`, bukan tipe `CustomError` paralel). Panduan [`docs/conventions/codebase-conventions.md`](docs/conventions/codebase-conventions.md) yang menyebut `NewCustomError` setara dengan **`Problem(...)` / `New(...)` + chain** di paket ini.
-
-### 15.2 Strategi pengujian
-
-- Panduan utama: [`docs/conventions/unit-test.md`](docs/conventions/unit-test.md) (testify/suite, sqlmock, tag `integration` / `integration_all`).
-- Lapisan usecase per domain: pola suite bersama atau per-file mengikuti [`docs/conventions/service-layer-test.md`](docs/conventions/service-layer-test.md), dengan tes hidup di **`services/inventory/domains/*/*_test.go`** (nama berdampingan dengan sumber).
-- Target cakupan yang dikehendaki dokumen konvensi: repository dan service/usecase tetap menjadi prioritas (±80% menurut panduan).
-
 ---
 
 ## 16. Deployment Architecture
 
-Lingkungan **microservice-ready**: banyak kontainer kecil di belakang **Kong**; replika dan scaling per layanan.
+**Microservice-ready** environment: multiple small containers behind **Kong**; scale and restart each service independently.
 
 ```mermaid
 flowchart TB
@@ -1352,16 +1319,16 @@ flowchart TB
   S --> PG
 ```
 
-**Catatan operasional**
+**Operational notes**
 
-- **inventory-api** — stateless; scale horizontal; koneksi ke satu PostgreSQL (pooling: PgBouncer jika perlu).
-- **notification-service** — tidak mengubah stok; idempotensi kirim (mis. dedup di Redis) disarankan.
-- **worker-*** — bisa digabung satu proses di dev (`/app/worker --all`); di produksi dipisah kontainer agar **restart** dan **resource limit** independen.
-- **Kong** — satu titik masuk untuk `/api/v1/...`; health route per upstream.
+- **inventory-api** — stateless; horizontal scale; single PostgreSQL (add PgBouncer if needed).
+- **notification-service** — does not change stock; idempotent delivery (e.g. Redis dedup) recommended.
+- **worker-*** — can be one process in dev (`/app/worker --all`); split containers in production for independent **restart** and **resource limits**.
+- **Kong** — single entry for `/api/v1/...`; health checks per upstream.
 
-### Docker Compose (Development — satu proses worker)
+### Docker Compose (development — single worker process)
 
-Contoh: build dari **`services/inventory`**, **`services/notification`**, **`workers`**. **Satu layanan `worker`** menjalankan outbox relay + konsumen alerts/reports/sync dalam **satu binary** (flag `--mode=all` atau setara di `cmd/worker`) — cukup untuk dev dan lab kecil. `kong.yml` tetap mendefinisikan upstream `inventory-api`, `notification-service`.
+Example: build from **`services/inventory`**, **`services/notification`**, **`workers`**. One **`worker`** service runs outbox relay + alert/report/sync consumers in **one binary** (`--mode=all` or equivalent in `cmd/worker`) — enough for dev and small setups. `kong.yml` still defines upstreams `inventory-api`, `notification-service`.
 
 ```yaml
 services:
@@ -1404,7 +1371,6 @@ services:
     command: ["/app/server"]
     environment:
       REDIS_ADDR: "redis:6379"
-      # DB opsional: preferensi template per tenant
     expose: ["8081"]
     depends_on: [redis]
 
@@ -1426,31 +1392,26 @@ volumes:
   pgdata:
 ```
 
-**Produksi / scale-up:** pecah menjadi beberapa kontainer dengan `command` berbeda (`--mode=outbox-relay`, `--mode=alerts`, `--mode=reports`, `--mode=sync`) agar **restart**, **CPU**, dan **replika** per peran independen — atau scale hanya konsumen yang bottleneck.
+**Production / scale-out:** split into multiple containers with different `command` (`--mode=outbox-relay`, `--mode=alerts`, `--mode=reports`, `--mode=sync`) for independent **restart**, **CPU**, and **replicas** — or scale only the consumer that is the bottleneck.
 
-**`infra/kong/kong.yml` (cuplikan konsep)** — upstream `name: inventory-api`, `target: inventory-api:8080`, route `paths: ["/api/v1/inventory"]`; upstream `notification-service:8081`, route `paths: ["/api/v1/notifications"]`.
+**`infra/kong/kong.yml` (concept)** — upstream `inventory-api` → `inventory-api:8080`, route `paths: ["/api/v1/inventory"]`; upstream `notification-service:8081`, route `paths: ["/api/v1/notifications"]`.
 
 ---
 
 ## 17. Implementation Roadmap
 
-Checklist tugas backend tingkat granular (setup → produksi) dikelola oleh tim (board issue / dokumen internal). Dokumen arsitektur ini tidak mengikat satu file roadmap di dalam repo; sinkronkan dengan pemilik produk.
+Granular backend task checklists (setup → production) are owned by the team (issue board / internal docs). This architecture document does not pin a single roadmap file in the repo; stay aligned with product owners.
 
-### 17.1 Quality gates dan alur pengembangan
+### 17.1 Quality gates and development workflow
 
-Ringkasan dari [`.claude/CLAUDE.md`](.claude/CLAUDE.md) dan [`.claude/rules/general/verification-pipeline.md`](.claude/rules/general/verification-pipeline.md) — berguna untuk developer dan opsional untuk workflow agent:
-
-| Langkah | Isi |
-|--------|-----|
-| **Urutan vertikal** | Skema DB & migrasi → repository / akses data → **usecase** (aturan bisnis) → HTTP handler & OpenAPI → konfigurasi Kong (`infra/kong/kong.yml`). |
-| **Tes** | Dengan Postgres dev berjalan: **`make test-all`**; jika tidak: **`make test`** (unit). Lihat juga [`docs/conventions/unit-test.md`](docs/conventions/unit-test.md). |
-| **Migrasi / seed** | Jika mengubah `infra/database/migrations/` atau mock seed, verifikasi apply + rollback sesuai pipeline di `.claude/rules/general/verification-pipeline.md`. |
-| **Workflow agent (opsional)** | Pembagian domain `db-dev` / `biz-dev` / `app-dev` / `infra-dev` di `.claude/agents/` — tidak wajib di luar lingkungan Claude Code. |
+| Step | Content |
+|------|---------|
+| **Vertical order** | DB schema & migrations → repository / data access → **usecase** (business rules) → HTTP handlers & OpenAPI → Kong config (`infra/kong/kong.yml`). |
 
 ### Phase 1 — Foundation (Backend Core)
 
-1. Inisialisasi **`go.mod`** di root + kerangka **`services/inventory`**, **`pkg/common`**, **`workers`** (fx, config, Zap)
-2. Koneksi PostgreSQL + GORM + runner migrasi (`infra/database/migrations`)
+1. Root **`go.mod`** + skeleton **`services/inventory`**, **`pkg/common`**, **`workers`** (fx, config, Zap)
+2. PostgreSQL + GORM + migration runner (`infra/database/migrations`)
 3. DB schema: all tables as defined in section 8
 4. Auth module: register, login, JWT issue/verify, tenant middleware
 5. Catalog module: CRUD products + categories (with soft delete rules)
@@ -1474,17 +1435,17 @@ Ringkasan dari [`.claude/CLAUDE.md`](.claude/CLAUDE.md) dan [`.claude/rules/gene
 
 ### Phase 4 — Realtime & Frontend (`frontend/`)
 
-17. SSE endpoint + Redis Pub/Sub subscription (di **`services/inventory`**)
+17. SSE endpoint + Redis Pub/Sub subscription (in **`services/inventory`**)
 18. Kong configuration (routing, JWT plugin, rate limit)
-19. Di **`frontend/`** (Next.js): halaman auth, CRUD produk/kategori/gudang
-20. Di **`frontend/`**: form movement (inbound, outbound, transfer)
-21. Di **`frontend/`**: dashboard + SSE realtime
-22. Di **`frontend/`**: penampil audit log
+19. In **`frontend/`** (Next.js): auth pages, product/category/warehouse CRUD
+20. In **`frontend/`**: movement forms (inbound, outbound, transfer)
+21. In **`frontend/`**: dashboard with SSE realtime updates
+22. In **`frontend/`**: audit log viewer
 
 ### Phase 5 — Polish & Production
 
 23. Sync worker for external systems
-24. **Deployment microservice-ready:** Kong declarative, kontainer `inventory-api` / `notification-service` / **`worker`** (dev: satu proses `--mode=all`; prod: opsional pecah per `--mode`), health check per layanan
+24. **Microservice-ready deployment:** Kong declarative, containers for `inventory-api` / `notification-service` / **`worker`** (dev: single process `--mode=all`; prod: optionally split by `--mode`), per-service health checks
 25. Monitoring, metrics (Prometheus), tracing (OpenTelemetry) per service
 26. Load testing, index tuning
-27. CI/CD pipeline (build image terpisah per `cmd`), Docker production
+27. CI/CD pipeline (separate image per `cmd`), Docker production

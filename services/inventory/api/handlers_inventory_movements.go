@@ -82,14 +82,7 @@ func readBindRawBodyMovementHash(c echo.Context, dst any) (string, error) {
 // GetApiV1InventoryMovements handles GET /api/v1/inventory/movements.
 func (h *ServerHandler) GetApiV1InventoryMovements(c echo.Context, params stub.GetApiV1InventoryMovementsParams) error {
 	ctx := c.Request().Context()
-	page := 1
-	perPage := 20
-	if params.Page != nil {
-		page = int(*params.Page)
-	}
-	if params.PerPage != nil {
-		perPage = int(*params.PerPage)
-	}
+	page, perPage := resolvePagePerPage(c, params.Page, params.PerPage)
 	search := ""
 	if params.Search != nil {
 		search = string(*params.Search)

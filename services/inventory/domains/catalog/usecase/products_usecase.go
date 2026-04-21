@@ -45,7 +45,7 @@ func (u *usecase) ListProducts(ctx context.Context, in ListProductsInput) (ListP
 	}
 
 	page := 1
-	perPage := 20
+	perPage := 10
 	if in.Page != nil {
 		page = *in.Page
 	}

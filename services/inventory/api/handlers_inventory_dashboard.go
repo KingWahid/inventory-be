@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/KingWahid/inventory/backend/pkg/common/errorcodes"
@@ -54,4 +55,24 @@ func (h *ServerHandler) GetApiV1InventoryDashboardMovementsChart(c echo.Context,
 		Points: points,
 	}
 	return httpresponse.OK(c, http.StatusOK, data)
+}
+
+// GetDashboardStorageUtilization handles GET /api/v1/inventory/dashboard/storage-utilization.
+func (h *ServerHandler) GetDashboardStorageUtilization(c echo.Context) error {
+	ctx := c.Request().Context()
+	limit := 3
+	if raw := c.QueryParam("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return httpresponse.Fail(c, errorcodes.ErrValidationError.WithDetails(map[string]any{
+				"message": "limit must be an integer",
+			}))
+		}
+		limit = n
+	}
+	rows, err := h.svc.GetDashboardStorageUtilization(ctx, limit)
+	if err != nil {
+		return httpresponse.Fail(c, err)
+	}
+	return httpresponse.OK(c, http.StatusOK, rows)
 }
