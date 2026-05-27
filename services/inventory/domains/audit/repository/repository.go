@@ -64,12 +64,29 @@ type auditLogRow struct {
 	ID         string    `gorm:"column:id;type:uuid;primaryKey"`
 	TenantID   string    `gorm:"column:tenant_id;type:uuid"`
 	UserID     *string   `gorm:"column:user_id;type:uuid"`
-	UserName   *string   `gorm:"column:user_name"`
 	Action     string    `gorm:"column:action"`
 	Entity     string    `gorm:"column:entity"`
 	EntityID   string    `gorm:"column:entity_id;type:uuid"`
 	BeforeData []byte    `gorm:"column:before_data;type:jsonb"`
 	AfterData  []byte    `gorm:"column:after_data;type:jsonb"`
+	IPAddress  *string   `gorm:"column:ip_address"`
+	UserAgent  *string   `gorm:"column:user_agent"`
+	RequestID  *string   `gorm:"column:request_id"`
+	CreatedAt  time.Time `gorm:"column:created_at"`
+}
+
+// auditLogListRow is a flat struct for List queries (JOIN with users for user_name).
+// Separate from auditLogRow to avoid GORM primaryKey conflicts on embedded structs.
+type auditLogListRow struct {
+	ID         string    `gorm:"column:id"`
+	TenantID   string    `gorm:"column:tenant_id"`
+	UserID     *string   `gorm:"column:user_id"`
+	UserName   *string   `gorm:"column:user_name"`
+	Action     string    `gorm:"column:action"`
+	Entity     string    `gorm:"column:entity"`
+	EntityID   string    `gorm:"column:entity_id"`
+	BeforeData []byte    `gorm:"column:before_data"`
+	AfterData  []byte    `gorm:"column:after_data"`
 	IPAddress  *string   `gorm:"column:ip_address"`
 	UserAgent  *string   `gorm:"column:user_agent"`
 	RequestID  *string   `gorm:"column:request_id"`
@@ -166,7 +183,7 @@ func (r *repository) List(ctx context.Context, tenantID string, f ListFilter) ([
 		per = 20
 	}
 
-	var rows []auditLogRow
+	var rows []auditLogListRow
 	err := listQ.Order("al.created_at DESC, al.id ASC").
 		Offset((page - 1) * per).
 		Limit(per).
@@ -176,12 +193,29 @@ func (r *repository) List(ctx context.Context, tenantID string, f ListFilter) ([
 	}
 	out := make([]Entry, 0, len(rows))
 	for i := range rows {
-		out = append(out, rowToEntry(rows[i]))
+		out = append(out, listRowToEntry(rows[i]))
 	}
 	return out, total, nil
 }
 
 func rowToEntry(r auditLogRow) Entry {
+	return Entry{
+		ID:         r.ID,
+		TenantID:   r.TenantID,
+		UserID:     r.UserID,
+		Action:     r.Action,
+		Entity:     r.Entity,
+		EntityID:   r.EntityID,
+		BeforeData: r.BeforeData,
+		AfterData:  r.AfterData,
+		IPAddress:  r.IPAddress,
+		UserAgent:  r.UserAgent,
+		RequestID:  r.RequestID,
+		CreatedAt:  r.CreatedAt,
+	}
+}
+
+func listRowToEntry(r auditLogListRow) Entry {
 	return Entry{
 		ID:         r.ID,
 		TenantID:   r.TenantID,

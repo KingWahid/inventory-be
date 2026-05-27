@@ -1,6 +1,8 @@
 package errorcodes
 
 import (
+	"go.uber.org/zap"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -25,6 +27,18 @@ func WriteHTTPError(c echo.Context, err error) error {
 		return nil
 	}
 	status, ae := ToHTTP(err)
+
+	// Log all 5xx errors with the original error for debugging.
+	if status >= 500 {
+		reqID := c.Response().Header().Get(echo.HeaderXRequestID)
+		zap.L().Error("internal server error",
+			zap.Error(err),
+			zap.String("request_id", reqID),
+			zap.String("method", c.Request().Method),
+			zap.String("uri", c.Request().RequestURI),
+		)
+	}
+
 	reqID := c.Response().Header().Get(echo.HeaderXRequestID)
 	if reqID == "" {
 		reqID = c.Request().Header.Get(echo.HeaderXRequestID)

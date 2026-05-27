@@ -14,8 +14,13 @@ func httpErrorHandler(err error, c echo.Context) {
 		return
 	}
 	status, _ := errorcodes.ToHTTP(err)
-	if status >= 500 && !errorcodes.IsClassified(err) {
-		zap.L().Warn("unclassified server error", zap.Error(err))
+	if status >= 500 {
+		zap.L().Error("server error",
+			zap.Error(err),
+			zap.String("method", c.Request().Method),
+			zap.String("uri", c.Request().RequestURI),
+			zap.Bool("classified", errorcodes.IsClassified(err)),
+		)
 	}
 	_ = errorcodes.WriteHTTPError(c, err)
 }
