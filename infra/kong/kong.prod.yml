@@ -1,6 +1,5 @@
 # Kong DB-less declarative config — PRODUCTION (Railway)
 # Service URLs use Railway private networking: <service-name>.railway.internal
-# Replace <service-name> with the exact Railway service name you set.
 _format_version: "3.0"
 _transform: true
 
@@ -13,16 +12,8 @@ services:
           - /api/v1/inventory
         strip_path: false
 
-  - name: notification-service
-    url: http://notification-service.railway.internal:8081
-    routes:
-      - name: notification-service-routes
-        paths:
-          - /api/v1/notifications
-        strip_path: false
-
   - name: authentication-service
-    url: http://authentication-service.railway.internal:8082
+    url: http://authentication.railway.internal:8082
     routes:
       - name: auth-login-rate-limit
         paths:
