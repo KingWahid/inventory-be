@@ -1,5 +1,5 @@
 FROM kong:3.6
-COPY kong.prod.yml /kong/kong.yml
+COPY infra/kong/kong.prod.yml /kong/kong.yml
 ENV KONG_DATABASE=off
 ENV KONG_DECLARATIVE_CONFIG=/kong/kong.yml
 ENV KONG_PROXY_LISTEN=0.0.0.0:8000
